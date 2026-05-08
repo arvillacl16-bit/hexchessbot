@@ -64,6 +64,37 @@ impl Piece {
     }
 }
 
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct Square {
+    l: u8,
+    n: u8,
+}
+
+impl Square {
+    pub fn new(l: i8, n: i8) -> Option<Self> {
+        if Self::is_valid(l, n) {
+            Some(Square { 
+                l: l as u8, 
+                n: n as u8, 
+            }) 
+        } else { 
+            None
+        }
+    }
+
+    pub unsafe fn new_unchecked(l: i8, n: i8) -> Self {
+        Square {
+            l: l as u8,
+            n: n as u8
+        }
+    }
+
+    pub fn is_valid(l: i8, n: i8) -> bool {
+        let diff = l - n;
+        (0..11).contains(&l) && (0..11).contains(&n) && diff >= -5 && diff <= 5
+    }
+}
+
 pub struct Board {
     pub cells: [Piece; BOARD_SIZE],
 }
@@ -74,7 +105,7 @@ impl Board {
 
         for l in 0..11 {
             for n in 0..11 {
-                if Self::is_valid_hex(l, n) {
+                if Square::is_valid(l, n) {
                     cells[(l * 11 + n) as usize] = Piece::EMPTY; 
                 }
             }
@@ -134,16 +165,106 @@ impl Board {
         board
     }
 
-    pub fn is_valid_hex(l: i8, n: i8) -> bool {
-        let diff = l - n;
-        (0..11).contains(&l) && (0..11).contains(&n) && diff >= -5 && diff <= 5
+    pub fn set_piece(&mut self, square: Square, piece: Piece) {
+        self.cells[(square.l * 11 + square.n) as usize] = piece;
     }
 
-    pub fn set_piece(&mut self, l: i8, n: i8, piece: Piece) {
-        if Self::is_valid_hex(l, n) {
-            self.cells[(l * 11 + n) as usize] = piece;
+    fn get_sliding_moves(&self, start_idx: usize) -> Vec<usize> {
+        let piece = self.cells[start_idx];
+        let mut moves = Vec::new();
+
+        let directions = match piece.piece_type() {
+            PieceType::Rook => vec![1, -1, 11, -11, 12, -12],
+            PieceType::Bishop => vec![23, -23, 13, -13, 10, -10],
+            PieceType::Queen => vec![1, -1, 11, -11, 10, -10, 12, -12, 23, -23, 13, -13],
+            _ => return moves,
+        };
+
+        for offset in directions {
+            let mut curr_idx = start_idx as i16;
+
+            loop {
+                curr_idx += offset as i16;
+
+                if curr_idx < 0 || curr_idx >= BOARD_SIZE as i16 { break; }
+
+                let target_piece = self.cells[curr_idx as usize];
+
+                if target_piece.is_off_board() { break; }
+                if target_piece.is_empty() {
+                    moves.push(curr_idx as usize);
+                } else {
+                    if target_piece.is_white() != piece.is_white() {
+                        moves.push(curr_idx as usize);
+                    }
+                    break;
+                }
+            }
         }
+
+        moves
     }
+
+    fn get_knight_moves(&self, start_idx: usize) -> Vec<usize> {
+        let piece = self.cells[start_idx];
+        let mut moves = Vec::new();
+
+        if piece.piece_type() != PieceType::Knight { return moves; }
+
+        for idx_offset in [34, -34, 35, -35, 25, -25, 14, -14, 9, -9, 21, -21] {
+            let target_idx = start_idx as i16 + idx_offset;
+
+            if target_idx < 0 || target_idx >= BOARD_SIZE as i16 { continue; }
+
+            let target_piece = self.cells[target_idx as usize];
+
+            if target_piece.is_off_board() { continue; }
+            if target_piece.is_empty() || target_piece.is_white() != piece.is_white() {
+                moves.push(target_idx as usize);
+            }
+        }
+
+        moves
+    }
+
+    fn get_king_moves(&self, start_idx: usize) -> Vec<usize> {
+        let piece = self.cells[start_idx];
+        let mut moves = Vec::new();
+
+        if piece.piece_type() != PieceType::King { return moves; }
+
+        for idx_offset in [1, 11, 10, 12, 23, 13, -1i16, -11i16, -10i16, -12i16, -23i16, -13i16] {
+            let target_idx = start_idx as i16 + idx_offset;
+
+            if target_idx < 0 || target_idx >= BOARD_SIZE as i16 { continue; }
+
+            let target_piece = self.cells[target_idx as usize];
+
+            if target_piece.is_off_board() { continue; }
+            if target_piece.is_empty() || target_piece.is_white() != piece.is_white() {
+                moves.push(start_idx + idx_offset as usize);
+            }
+        }
+
+        moves
+    }
+
+    pub fn legal_moves(&self) -> Vec<Move> {
+        let mut moves = Vec::new();
+        for i in 0..121 {
+            // something
+        }
+        moves
+    }
+}
+
+pub struct Move {
+    from: Square,
+    to: Square,
+    moved_piece: PieceType,
+    captured_piece: PieceType,
+    was_pawn_double_push: bool,
+    was_en_passant: bool,
 }
 
 #[cfg(test)]
