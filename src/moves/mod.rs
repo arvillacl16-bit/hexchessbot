@@ -1,4 +1,4 @@
-use crate::board::{self, Square, Board, PieceType};
+use crate::board::{self, Board, PieceType, Square};
 
 #[derive(Debug, Clone)]
 pub struct Game {

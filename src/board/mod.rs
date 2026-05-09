@@ -141,7 +141,20 @@ impl Board {
 
     #[inline]
     pub fn new() -> Self {
-        Board { wp: 0, bp: 0, wr: 0, br: 0, wn: 0, bn: 0, wb: 0, bb: 0, wk: 0, bk: 0, wq: 0, bq: 0 }
+        Board {
+            wp: 0,
+            bp: 0,
+            wr: 0,
+            br: 0,
+            wn: 0,
+            bn: 0,
+            wb: 0,
+            bb: 0,
+            wk: 0,
+            bk: 0,
+            wq: 0,
+            bq: 0,
+        }
     }
 
     #[inline]
@@ -161,16 +174,22 @@ impl Board {
             bk: 0b01000000000_00000000000_00000000000_00000000000_00000000000_00000000000_00000000000_00000000000_00000000000_00000000000_00000000000,
         }
     }
-    
+
     #[inline]
     pub fn clear_square(&mut self, idx: u8) {
         let mask = !(1u128 << idx);
-        self.wp &= mask; self.bp &= mask;
-        self.wr &= mask; self.br &= mask;
-        self.wn &= mask; self.bn &= mask;
-        self.wb &= mask; self.bb &= mask;
-        self.wq &= mask; self.bq &= mask;
-        self.wk &= mask; self.bk &= mask;
+        self.wp &= mask;
+        self.bp &= mask;
+        self.wr &= mask;
+        self.br &= mask;
+        self.wn &= mask;
+        self.bn &= mask;
+        self.wb &= mask;
+        self.bb &= mask;
+        self.wq &= mask;
+        self.bq &= mask;
+        self.wk &= mask;
+        self.bk &= mask;
     }
 
     pub fn set_piece(&mut self, square: Square, piece: Piece) {
@@ -206,27 +225,51 @@ impl Board {
     }
 
     #[inline]
-    pub fn white_pawns(&self) -> u128 { self.wp }
+    pub fn white_pawns(&self) -> u128 {
+        self.wp
+    }
     #[inline]
-    pub fn black_pawns(&self) -> u128 { self.bp }
+    pub fn black_pawns(&self) -> u128 {
+        self.bp
+    }
     #[inline]
-    pub fn white_kings(&self) -> u128 { self.wk }
+    pub fn white_kings(&self) -> u128 {
+        self.wk
+    }
     #[inline]
-    pub fn black_kings(&self) -> u128 { self.bk }
+    pub fn black_kings(&self) -> u128 {
+        self.bk
+    }
     #[inline]
-    pub fn white_rooks(&self) -> u128 { self.wr }
+    pub fn white_rooks(&self) -> u128 {
+        self.wr
+    }
     #[inline]
-    pub fn black_rooks(&self) -> u128 { self.br }
+    pub fn black_rooks(&self) -> u128 {
+        self.br
+    }
     #[inline]
-    pub fn white_knights(&self) -> u128 { self.wn }
+    pub fn white_knights(&self) -> u128 {
+        self.wn
+    }
     #[inline]
-    pub fn black_knights(&self) -> u128 { self.bn }
+    pub fn black_knights(&self) -> u128 {
+        self.bn
+    }
     #[inline]
-    pub fn white_bishops(&self) -> u128 { self.wb }
+    pub fn white_bishops(&self) -> u128 {
+        self.wb
+    }
     #[inline]
-    pub fn black_bishops(&self) -> u128 { self.bb }
+    pub fn black_bishops(&self) -> u128 {
+        self.bb
+    }
     #[inline]
-    pub fn white_queens(&self) -> u128 { self.wq }
+    pub fn white_queens(&self) -> u128 {
+        self.wq
+    }
     #[inline]
-    pub fn black_queens(&self) -> u128 { self.bq }
+    pub fn black_queens(&self) -> u128 {
+        self.bq
+    }
 }
