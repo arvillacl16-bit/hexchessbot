@@ -42,23 +42,28 @@ impl Piece {
     pub const OFF_BOARD: Piece = Piece(128);
     pub const EMPTY: Piece = Piece(0);
 
+    #[inline]
     pub fn new(is_white: bool, piece_type: PieceType) -> Self {
         let color_bit = if is_white { 1u8 << 3 } else { 0u8 };
         Self(color_bit | u8::from(piece_type))
     }
 
+    #[inline]
     pub fn is_white(self) -> bool {
         self.0 & COLOR_MASK == 0b1000
     }
 
+    #[inline]
     pub fn piece_type(self) -> PieceType {
         PieceType::from(self.0 & TYPE_MASK)
     }
 
+    #[inline]
     pub fn is_off_board(self) -> bool {
         self == Piece::OFF_BOARD
     }
 
+    #[inline]
     pub fn is_empty(self) -> bool {
         self == Piece::EMPTY
     }
@@ -71,6 +76,7 @@ pub struct Square {
 }
 
 impl Square {
+    #[inline]
     pub fn new(l: i8, n: i8) -> Option<Self> {
         if Self::is_valid(l, n) {
             Some(Square {
@@ -82,6 +88,7 @@ impl Square {
         }
     }
 
+    #[inline]
     pub unsafe fn new_unchecked(l: i8, n: i8) -> Self {
         Square {
             l: l as u8,
@@ -89,6 +96,7 @@ impl Square {
         }
     }
 
+    #[inline]
     pub fn is_valid(l: i8, n: i8) -> bool {
         let diff = l - n;
         (0..11).contains(&l) && (0..11).contains(&n) && diff >= -5 && diff <= 5
@@ -96,6 +104,7 @@ impl Square {
 }
 
 impl From<u8> for Square {
+    #[inline]
     fn from(value: u8) -> Self {
         Self {
             l: value / 11,
@@ -105,6 +114,7 @@ impl From<u8> for Square {
 }
 
 impl From<Square> for u8 {
+    #[inline]
     fn from(value: Square) -> Self {
         value.l * 11 + value.n
     }
@@ -150,7 +160,35 @@ impl Board {
         }
     }
 
-    pub fn set_piece(&mut self, square: Square, piece: Piece) {
-        todo!();
+    pub fn set_piece(&mut self, square: Square, piece: Piece, is_white: bool) {
+        let idx = u8::from(square);
+        let select_mask: u128 = !(1 << idx);
+        match (piece.piece_type(), is_white) {
+            (PieceType::None, _) => {
+                self.wp &= select_mask;
+                self.bp &= select_mask;
+                self.wr &= select_mask;
+                self.br &= select_mask;
+                self.wn &= select_mask;
+                self.bn &= select_mask;
+                self.wb &= select_mask;
+                self.bb &= select_mask;
+                self.wk &= select_mask;
+                self.bk &= select_mask;
+            },
+            (PieceType::King, true) => {
+                self.wp &= select_mask;
+                self.bp &= select_mask;
+                self.wr &= select_mask;
+                self.br &= select_mask;
+                self.wn &= select_mask;
+                self.bn &= select_mask;
+                self.wb &= select_mask;
+                self.bb &= select_mask;
+                self.wk = !select_mask;
+                self.bk &= select_mask;
+            }
+            _ => panic!("breh"),
+        }
     }
 }
