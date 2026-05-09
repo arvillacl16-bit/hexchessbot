@@ -112,76 +112,45 @@ impl From<Square> for u8 {
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct Board {
-    pub cells: [Piece; BOARD_SIZE],
+    wp: u128,
+    bp: u128,
+    wr: u128,
+    br: u128,
+    wn: u128,
+    bn: u128,
+    wb: u128,
+    bb: u128,
+    wk: u128,
+    bk: u128,
+    wq: u128,
+    bq: u128,
 }
 
 impl Board {
+    const ON_BOARD: u128 = 0b00000001111110000011111110000111111110001111111110011111111110111111111110111111111100111111111000111111110000111111100000111111;
+
     pub fn new() -> Self {
-        let mut cells = [Piece::OFF_BOARD; BOARD_SIZE];
-
-        for l in 0..11 {
-            for n in 0..11 {
-                if Square::is_valid(l, n) {
-                    cells[(l * 11 + n) as usize] = Piece::EMPTY;
-                }
-            }
-        }
-
-        Board { cells }
+        Board { wp: 0, bp: 0, wr: 0, br: 0, wn: 0, bn: 0, wb: 0, bb: 0, wk: 0, bk: 0, wq: 0, bq: 0 }
     }
 
     pub fn starting_pos() -> Self {
-        let mut board = Self::new();
-
-        let white_pawn = Piece::new(true, PieceType::Pawn);
-        for i in 0..=4 {
-            board.cells[i + 44] = white_pawn;
+        Board {
+            wp: 0b00000000000_00000000000_00000000000_00000000000_00000000000_00000000000_00111110000_00010000000_00010000000_00010000000_00001000000,
+            bp: 0b00000100000_00000010000_00000010000_00000010000_00001111100_00000000000_00000000000_00000000000_00000000000_00000000000_00000000000,
+            wr: 0b00000000000_00000000000_00000000000_00000000000_00000000000_00000000000_00000000000_10000000000_00000000000_00000000000_00010000000,
+            br: 0b00000001000_00000000000_00000000000_00000000001_00000000000_00000000000_00000000000_00000000000_00000000000_00000000000_00000000000,
+            wn: 0b00000000000_00000000000_00000000000_00000000000_00000000000_00000000000_00000000000_00000000000_10000000000_00000000000_00100000000,
+            bn: 0b00000000100_00000000000_00000000100_00000000000_00000000000_00000000000_00000000000_00000000000_00000000000_00000000000_00000000000,
+            wb: 0b00000000000_00000000000_00000000000_00000000000_00000000000_00000000000_00000000000_00000000000_00000000010_00000000001_00000000001,
+            bb: 0b10000000000_10000000000_01000000000_00000000000_00000000000_00000000000_00000000000_00000000000_00000000000_00000000000_00000000000,
+            wq: 0b00000000000_00000000000_00000000000_00000000000_00000000000_00000000000_00000000000_00000000000_00000000000_10000000000_00000000000,
+            bq: 0b00000000000_01000000000_00000000000_00000000000_00000000000_00000000000_00000000000_00000000000_00000000000_00000000000_00000000000,
+            wk: 0b00000000000_00000000000_00000000000_00000000000_00000000000_00000000000_00000000000_00000000000_00000000000_00000000000_00000000010,
+            bk: 0b01000000000_00000000000_00000000000_00000000000_00000000000_00000000000_00000000000_00000000000_00000000000_00000000000_00000000000,
         }
-
-        for i in 0..=4 {
-            board.cells[i * 11 + 4] = white_pawn;
-        }
-
-        let black_pawn = Piece::new(false, PieceType::Pawn);
-        for i in 6..=10 {
-            board.cells[i + 77] = black_pawn;
-        }
-
-        for i in 6..=10 {
-            board.cells[i * 11 + 6] = black_pawn;
-        }
-
-        for i in 0..=2 {
-            board.cells[i * 12] = Piece::new(true, PieceType::Bishop);
-            board.cells[120 - i * 12] = Piece::new(false, PieceType::Bishop);
-        }
-
-        board.cells[11] = Piece::new(true, PieceType::Queen);
-        board.cells[119] = Piece::new(false, PieceType::Queen);
-
-        board.cells[1] = Piece::new(true, PieceType::King);
-        board.cells[109] = Piece::new(false, PieceType::King);
-
-        let coords = (3, 0);
-        board.cells[coords.0 * 11 + coords.1] = Piece::new(true, PieceType::Rook);
-        board.cells[coords.1 * 11 + coords.0] = Piece::new(true, PieceType::Rook);
-
-        let coords = (10, 2);
-        board.cells[coords.0 * 11 + coords.1] = Piece::new(false, PieceType::Rook);
-        board.cells[coords.1 * 11 + coords.0] = Piece::new(false, PieceType::Rook);
-
-        let coords = (2, 0);
-        board.cells[coords.0 * 11 + coords.1] = Piece::new(true, PieceType::Knight);
-        board.cells[coords.1 * 11 + coords.0] = Piece::new(true, PieceType::Knight);
-
-        let coords = (10, 3);
-        board.cells[coords.0 * 11 + coords.1] = Piece::new(false, PieceType::Knight);
-        board.cells[coords.1 * 11 + coords.0] = Piece::new(false, PieceType::Knight);
-
-        board
     }
 
     pub fn set_piece(&mut self, square: Square, piece: Piece) {
-        self.cells[(square.l * 11 + square.n) as usize] = piece;
+        todo!();
     }
 }
