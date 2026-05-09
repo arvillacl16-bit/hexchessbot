@@ -139,10 +139,12 @@ pub struct Board {
 impl Board {
     const ON_BOARD: u128 = 0b00000001111110000011111110000111111110001111111110011111111110111111111110111111111100111111111000111111110000111111100000111111;
 
+    #[inline]
     pub fn new() -> Self {
         Board { wp: 0, bp: 0, wr: 0, br: 0, wn: 0, bn: 0, wb: 0, bb: 0, wk: 0, bk: 0, wq: 0, bq: 0 }
     }
 
+    #[inline]
     pub fn starting_pos() -> Self {
         Board {
             wp: 0b00000000000_00000000000_00000000000_00000000000_00000000000_00000000000_00111110000_00010000000_00010000000_00010000000_00001000000,
@@ -159,36 +161,72 @@ impl Board {
             bk: 0b01000000000_00000000000_00000000000_00000000000_00000000000_00000000000_00000000000_00000000000_00000000000_00000000000_00000000000,
         }
     }
+    
+    #[inline]
+    pub fn clear_square(&mut self, idx: u8) {
+        let mask = !(1u128 << idx);
+        self.wp &= mask; self.bp &= mask;
+        self.wr &= mask; self.br &= mask;
+        self.wn &= mask; self.bn &= mask;
+        self.wb &= mask; self.bb &= mask;
+        self.wq &= mask; self.bq &= mask;
+        self.wk &= mask; self.bk &= mask;
+    }
 
-    pub fn set_piece(&mut self, square: Square, piece: Piece, is_white: bool) {
+    pub fn set_piece(&mut self, square: Square, piece: Piece) {
         let idx = u8::from(square);
         let select_mask: u128 = !(1 << idx);
-        match (piece.piece_type(), is_white) {
-            (PieceType::None, _) => {
-                self.wp &= select_mask;
-                self.bp &= select_mask;
-                self.wr &= select_mask;
-                self.br &= select_mask;
-                self.wn &= select_mask;
-                self.bn &= select_mask;
-                self.wb &= select_mask;
-                self.bb &= select_mask;
-                self.wk &= select_mask;
-                self.bk &= select_mask;
-            },
-            (PieceType::King, true) => {
-                self.wp &= select_mask;
-                self.bp &= select_mask;
-                self.wr &= select_mask;
-                self.br &= select_mask;
-                self.wn &= select_mask;
-                self.bn &= select_mask;
-                self.wb &= select_mask;
-                self.bb &= select_mask;
-                self.wk = !select_mask;
-                self.bk &= select_mask;
-            }
-            _ => panic!("breh"),
+        self.clear_square(idx);
+
+        match (piece.piece_type(), piece.is_white()) {
+            (PieceType::Pawn, true) => self.wp |= !select_mask,
+            (PieceType::Pawn, false) => self.bp |= !select_mask,
+            (PieceType::Rook, true) => self.wr |= !select_mask,
+            (PieceType::Rook, false) => self.br |= !select_mask,
+            (PieceType::Knight, true) => self.wn |= !select_mask,
+            (PieceType::Knight, false) => self.bn |= !select_mask,
+            (PieceType::Bishop, true) => self.wb |= !select_mask,
+            (PieceType::Bishop, false) => self.bb |= !select_mask,
+            (PieceType::Queen, true) => self.wq |= !select_mask,
+            (PieceType::Queen, false) => self.bq |= !select_mask,
+            (PieceType::King, true) => self.wk |= !select_mask,
+            (PieceType::King, false) => self.bk |= !select_mask,
+            _ => {}
         }
     }
+
+    #[inline]
+    pub fn white_pieces(&self) -> u128 {
+        self.wk | self.wp | self.wr | self.wn | self.wb | self.wq
+    }
+
+    #[inline]
+    pub fn black_pieces(&self) -> u128 {
+        self.bk | self.bp | self.br | self.bn | self.bb | self.bq
+    }
+
+    #[inline]
+    pub fn white_pawns(&self) -> u128 { self.wp }
+    #[inline]
+    pub fn black_pawns(&self) -> u128 { self.bp }
+    #[inline]
+    pub fn white_kings(&self) -> u128 { self.wk }
+    #[inline]
+    pub fn black_kings(&self) -> u128 { self.bk }
+    #[inline]
+    pub fn white_rooks(&self) -> u128 { self.wr }
+    #[inline]
+    pub fn black_rooks(&self) -> u128 { self.br }
+    #[inline]
+    pub fn white_knights(&self) -> u128 { self.wn }
+    #[inline]
+    pub fn black_knights(&self) -> u128 { self.bn }
+    #[inline]
+    pub fn white_bishops(&self) -> u128 { self.wb }
+    #[inline]
+    pub fn black_bishops(&self) -> u128 { self.bb }
+    #[inline]
+    pub fn white_queens(&self) -> u128 { self.wq }
+    #[inline]
+    pub fn black_queens(&self) -> u128 { self.bq }
 }
