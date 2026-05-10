@@ -37,11 +37,11 @@ impl Move {
     }
 
     pub fn from(self) -> Square {
-        Square::from(((self.0 >> 16) & 0x7F) as u8)
+        unsafe { Square::try_from(((self.0 >> 16) & 0x7F) as u8).unwrap_unchecked() }
     }
 
     pub fn to(self) -> Square {
-        Square::from(((self.0 >> 9) & 0x7F) as u8)
+        unsafe { Square::try_from(((self.0 >> 9) & 0x7F) as u8).unwrap_unchecked() }
     }
 
     pub fn promoted_piece(self) -> PieceType {
@@ -92,13 +92,11 @@ impl Game {
         moves: &mut [Move],
         write_idx: &mut usize,
     ) -> Result<(), ()> {
-        let piece = self.board.cells[start_idx];
-
+        let piece = self.board.get_piece(start_idx as u8);
         for offset in match piece.piece_type() {
             PieceType::Rook => Self::ROOK_OFFSETS,
             PieceType::Bishop => Self::BISHOP_OFFSETS,
-            PieceType::Queen => Self::QUEEN_OFFSETS,
-            _ => return Err(()),
+            _ => Self::QUEEN_OFFSETS,
         } {
             let mut curr_idx = start_idx as i16;
 
@@ -109,15 +107,15 @@ impl Game {
                     break;
                 }
 
-                let target_piece = self.board.cells[curr_idx as usize];
+                let target_piece = self.board.get_piece(curr_idx as u8);
 
                 if target_piece.is_off_board() {
                     break;
                 }
                 if target_piece.is_empty() {
                     moves[*write_idx] = Move::new(
-                        Square::from(start_idx as u8),
-                        Square::from(curr_idx as u8),
+                        unsafe { Square::try_from(start_idx as u8).unwrap_unchecked() },
+                        unsafe { Square::try_from(curr_idx as u8).unwrap_unchecked() },
                         PieceType::None,
                         PieceType::None,
                         false,
@@ -128,8 +126,8 @@ impl Game {
                 } else {
                     if target_piece.is_white() != piece.is_white() {
                         moves[*write_idx] = Move::new(
-                            Square::from(start_idx as u8),
-                            Square::from(curr_idx as u8),
+                            unsafe { Square::try_from(start_idx as u8).unwrap_unchecked() },
+                            unsafe { Square::try_from(curr_idx as u8).unwrap_unchecked() },
                             PieceType::None,
                             target_piece.piece_type(),
                             false,
@@ -147,12 +145,7 @@ impl Game {
     }
 
     fn get_knight_moves(&self, start_idx: usize, moves: &mut [Move], write_idx: &mut usize) {
-        let piece = self.board.cells[start_idx];
-
-        if piece.piece_type() != PieceType::Knight {
-            return;
-        }
-
+        let piece = self.board.get_piece(start_idx as u8);
         for idx_offset in [34, -34, 35, -35, 25, -25, 14, -14, 9, -9, 21, -21] {
             let target_idx = start_idx as i16 + idx_offset;
 
@@ -160,15 +153,13 @@ impl Game {
                 continue;
             }
 
-            let target_piece = self.board.cells[target_idx as usize];
+            let target_piece = self.board.get_piece(target_idx as u8);
 
-            if target_piece.is_off_board() {
-                continue;
-            }
+            if target_piece.is_off_board() { break; }
             if target_piece.is_empty() || target_piece.is_white() != piece.is_white() {
                 moves[*write_idx] = Move::new(
-                    Square::from(start_idx as u8),
-                    Square::from(target_idx as u8),
+                    unsafe { Square::try_from(start_idx as u8).unwrap_unchecked() },
+                    unsafe { Square::try_from(target_idx as u8).unwrap_unchecked() },
                     PieceType::None,
                     target_piece.piece_type(),
                     false,
@@ -181,12 +172,7 @@ impl Game {
     }
 
     fn get_king_moves(&self, start_idx: usize, moves: &mut [Move], write_idx: &mut usize) {
-        let piece = self.board.cells[start_idx];
-
-        if piece.piece_type() != PieceType::King {
-            return;
-        }
-
+        let piece = self.board.get_piece(start_idx as u8);
         for idx_offset in [
             1, 11, 10, 12, 23, 13, -1i16, -11i16, -10i16, -12i16, -23i16, -13i16,
         ] {
@@ -196,15 +182,15 @@ impl Game {
                 continue;
             }
 
-            let target_piece = self.board.cells[target_idx as usize];
+            let target_piece = self.board.get_piece(target_idx as u8);
 
             if target_piece.is_off_board() {
                 continue;
             }
             if target_piece.is_empty() || target_piece.is_white() != piece.is_white() {
                 moves[*write_idx] = Move::new(
-                    Square::from(start_idx as u8),
-                    Square::from(target_idx as u8),
+                    unsafe { Square::try_from(start_idx as u8).unwrap_unchecked() },
+                    unsafe { Square::try_from(target_idx as u8).unwrap_unchecked() },
                     PieceType::None,
                     target_piece.piece_type(),
                     false,

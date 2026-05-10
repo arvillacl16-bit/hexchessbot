@@ -101,15 +101,19 @@ impl Square {
         let diff = l - n;
         (0..11).contains(&l) && (0..11).contains(&n) && diff >= -5 && diff <= 5
     }
+
+    #[inline]
+    pub fn is_valid_idx(idx: u8) -> bool { Self::is_valid((idx / 11) as i8, (idx % 11) as i8) }
 }
 
-impl From<u8> for Square {
+impl TryFrom<u8> for Square {
+    type Error = ();
     #[inline]
-    fn from(value: u8) -> Self {
-        Self {
-            l: value / 11,
-            n: value % 11,
-        }
+    fn try_from(value: u8) -> Result<Self, ()> {
+        let l = value / 11;
+        let n = value % 11;
+        if Self::is_valid(l as i8, n as i8) { Ok(Self { l, n }) }
+        else { Err(()) }
     }
 }
 
@@ -271,5 +275,29 @@ impl Board {
     #[inline]
     pub fn black_queens(&self) -> u128 {
         self.bq
+    }
+
+    pub fn get_piece(&self, idx: u8) -> Piece {
+        let existence = [self.wk, self.bk, self.wp, self.bp, self.wr, self.br, self.wn, self.bn, self.wb, self.bb, self.wq, self.bq].into_iter()
+            .map(|bb| (bb & (1 << idx)) >> idx == 1);
+
+        let mut piece_type = 0;
+        let mut is_white = true;
+
+        if !Square::is_valid_idx(idx) { return Piece::OFF_BOARD; }
+
+        for val in existence {
+            if val {
+                return Piece::new(is_white, PieceType::from(piece_type));
+            }
+            
+            if !is_white {
+                piece_type += 1;
+            }
+
+            is_white = !is_white;
+        }
+
+        return Piece::EMPTY;
     }
 }
