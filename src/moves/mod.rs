@@ -838,16 +838,16 @@ impl Game {
     }
 
     #[inline(always)]
-    fn get_king_moves(&self, start_idx: u8) -> u128 {
+    fn get_king_attacks(&self, start_idx: u8) -> u128 {
         Self::KING_ATTACKS[start_idx as usize]
     }
 
     #[inline(always)]
-    fn get_knight_moves(&self, start_idx: u8) -> u128 {
+    fn get_knight_attacks(&self, start_idx: u8) -> u128 {
         Self::KNIGHT_ATTACKS[start_idx as usize]
     }
 
-    fn get_bishop_moves(&self, start_idx: u8, occ: u128) -> u128 {
+    fn get_bishop_attacks(&self, start_idx: u8, occ: u128) -> u128 {
         let m = Self::BISHOP_MAGICS[start_idx as usize];
         if m.mask == 0 { return 0; }
 
@@ -855,7 +855,7 @@ impl Game {
         unsafe { BISHOP_ATTACKS_DB[m.offset + hash] }
     }
 
-    fn get_rook_moves(&self, start_idx: u8, occ: u128) -> u128 {
+    fn get_rook_attacks(&self, start_idx: u8, occ: u128) -> u128 {
         let mr = Self::ROOK_R_MAGICS[start_idx as usize];
         let hash_r = if mr.mask != 0 {
             (((occ & mr.mask).wrapping_mul(mr.magic)) >> mr.shift) as usize
@@ -879,6 +879,33 @@ impl Game {
     }
 
     pub fn get_pseudo_legal_moves(&self) -> Vec<Move> {
-        todo!();
+        let mut moves = Vec::with_capacity(64);
+
+        let (side_mask, opp_mask) = if self.is_white { (self.board.white_pieces(), self.board.black_pieces()) } else { (self.board.white_pieces(), self.board.black_pieces()) };
+        let all_occ = side_mask | opp_mask;
+        let empty_or_enemy = !side_mask;
+
+        if self.is_white {
+            let mut bishops = self.board.white_bishops();
+            while bishops != 0 {
+                let from_idx = bishops.trailing_zeros() as u8;
+
+                let mut attack_bb = self.get_bishop_attacks(from_idx, all_occ);
+                while attack_bb != 0 {
+                    let to_idx = attack_bb.trailing_zeros() as u8;
+                    let target_piece = self.board.get_piece(to_idx);
+
+                    moves.push(Move::new(unsafe { Square::try_from(from_idx).unwrap_unchecked() }, 
+                            unsafe { Square::try_from(to_idx).unwrap_unchecked() }, 
+                            PieceType::None,
+                            target_piece.piece_type(),
+                            false, false, false));
+                    attack_bb &= attack_bb - 1;
+                }
+
+                bishops &= bishops - 1;
+            }
+        }
+        moves
     }
 }
