@@ -10,6 +10,14 @@ pub struct Game {
 #[derive(Debug, Copy, Clone, PartialEq, Eq)]
 pub struct Move(u32);
 
+#[derive(Debug, Clone, Copy)]
+struct Magic {
+    mask: u128,
+    magic: u128,
+    shift: u32,
+    offset: usize,
+}
+
 impl Move {
     fn new(
         from: Square,
@@ -66,10 +74,252 @@ impl Move {
 }
 
 impl Game {
-    const ROOK_OFFSETS: &[i16] = &[1, -1, 11, -11, 12, -12];
-    const BISHOP_OFFSETS: &[i16] = &[23, -23, 13, -13, 10, -10];
-    const QUEEN_OFFSETS: &[i16] = &[1, -1, 11, -11, 12, -12, 23, -23, 13, -13, 10, -10];
-
+    const KNIGHT_ATTACKS: [u128; 121] = [
+        /* A1 idx  0 */ 0x00000000000000000000000C02004000, // 4 moves
+        /* A2 idx  1 */ 0x00000000000000000000001804408000, // 5 moves
+        /* A3 idx  2 */ 0x00000000000000000000003008810800, // 6 moves
+        /* A4 idx  3 */ 0x00000000000000000000006011021000, // 6 moves
+        /* A5 idx  4 */ 0x0000000000000000000000C022002000, // 5 moves
+        /* A6 idx  5 */ 0x00000000000000000000018004004000, // 4 moves
+        /* A7 off */ 0,
+        /* A8 off */ 0,
+        /* A9 off */ 0,
+        /* A10 off */ 0,
+        /* A11 off */ 0,
+        /* B1 idx 11 */ 0x00000000000000000000601002000004, // 5 moves
+        /* B2 idx 12 */ 0x00000000000000000000C02204000008, // 6 moves
+        /* B3 idx 13 */ 0x00000000000000000001804408400010, // 7 moves
+        /* B4 idx 14 */ 0x00000000000000000003008810800021, // 8 moves
+        /* B5 idx 15 */ 0x00000000000000000006011021000002, // 7 moves
+        /* B6 idx 16 */ 0x0000000000000000000C022002000004, // 6 moves
+        /* B7 idx 17 */ 0x00000000000000000018004004000008, // 5 moves
+        /* B8 off */ 0,
+        /* B9 off */ 0,
+        /* B10 off */ 0,
+        /* B11 off */ 0,
+        /* C1 idx 22 */ 0x00000000000000000300801000002002, // 6 moves
+        /* C2 idx 23 */ 0x00000000000000000601102000004004, // 7 moves
+        /* C3 idx 24 */ 0x00000000000000000C02204200008008, // 8 moves
+        /* C4 idx 25 */ 0x00000000000000001804408400010811, // 10 moves
+        /* C5 idx 26 */ 0x00000000000000003008810800021022, // 10 moves
+        /* C6 idx 27 */ 0x00000000000000006011021000002004, // 8 moves
+        /* C7 idx 28 */ 0x0000000000000000C022002000004008, // 7 moves
+        /* C8 idx 29 */ 0x00000000000000018004004000008010, // 6 moves
+        /* C9 off */ 0,
+        /* C10 off */ 0,
+        /* C11 off */ 0,
+        /* D1 idx 33 */ 0x00000000000000180400800001001000, // 6 moves
+        /* D2 idx 34 */ 0x00000000000000300881000002002001, // 8 moves
+        /* D3 idx 35 */ 0x00000000000000601102100004004003, // 10 moves
+        /* D4 idx 36 */ 0x00000000000000C02204200008408806, // 12 moves
+        /* D5 idx 37 */ 0x0000000000000180440840001081100C, // 12 moves
+        /* D6 idx 38 */ 0x00000000000003008810800021022018, // 12 moves
+        /* D7 idx 39 */ 0x00000000000006011021000002004030, // 10 moves
+        /* D8 idx 40 */ 0x0000000000000C022002000004008020, // 8 moves
+        /* D9 idx 41 */ 0x00000000000018004004000008010000, // 6 moves
+        /* D10 off */ 0,
+        /* D11 off */ 0,
+        /* E1 idx 44 */ 0x00000000000080200400000800800000, // 5 moves
+        /* E2 idx 45 */ 0x00000000000180400800001001000800, // 7 moves
+        /* E3 idx 46 */ 0x00000000000300881080002002001800, // 10 moves
+        /* E4 idx 47 */ 0x00000000000601102100004204403000, // 12 moves
+        /* E5 idx 48 */ 0x00000000000C02204200008408806000, // 12 moves
+        /* E6 idx 49 */ 0x0000000000180440840001081100C000, // 12 moves
+        /* E7 idx 50 */ 0x00000000003008810800021022018000, // 12 moves
+        /* E8 idx 51 */ 0x00000000006011021000002004030000, // 10 moves
+        /* E9 idx 52 */ 0x0000000000C002002000004008020000, // 7 moves
+        /* E10 idx 53 */ 0x00000000008004004000008010000000, // 5 moves
+        /* E11 off */ 0,
+        /* F1 idx 55 */ 0x00000000000100200000400400000000, // 4 moves
+        /* F2 idx 56 */ 0x00000000080200400000800800400000, // 6 moves
+        /* F3 idx 57 */ 0x00000000180400800001001000C00000, // 8 moves
+        /* F4 idx 58 */ 0x00000000300881080002102201800000, // 12 moves
+        /* F5 idx 59 */ 0x00000000601102100004204403000000, // 12 moves
+        /* F6 idx 60 */ 0x00000000C02204200008408806000000, // 12 moves
+        /* F7 idx 61 */ 0x0000000180440840001081100C000000, // 12 moves
+        /* F8 idx 62 */ 0x00000003008810800021022018000000, // 12 moves
+        /* F9 idx 63 */ 0x00000006001001000002004030000000, // 8 moves
+        /* F10 idx 64 */ 0x00000004002002000004008020000000, // 6 moves
+        /* F11 idx 65 */ 0x00000000004004000008010000000000, // 4 moves
+        /* G1 off */ 0,
+        /* G2 idx 67 */ 0x00000000100200000400400200000000, // 5 moves
+        /* G3 idx 68 */ 0x0000008020040000080080060000000, // 7 moves
+        /* G4 idx 69 */ 0x00000180400800001081100C00000000, // 10 moves
+        /* G5 idx 70 */ 0x00000300881080002102201800000000, // 12 moves
+        /* G6 idx 71 */ 0x00000601102100004204403000000000, // 12 moves
+        /* G7 idx 72 */ 0x00000C02204200008408806000000000, // 12 moves
+        /* G8 idx 73 */ 0x0000180440840001081100C000000000, // 12 moves
+        /* G9 idx 74 */ 0x00003000800800021022018000000000, // 10 moves
+        /* G10 idx 75 */ 0x00002001001000002004030000000000, // 7 moves
+        /* G11 idx 76 */ 0x00000002002000004008020000000000, // 5 moves
+        /* H1 off */ 0,
+        /* H2 off */ 0,
+        /* H3 idx 79 */ 0x00000100200000400400300000000000, // 6 moves
+        /* H4 idx 80 */ 0x00080200400000800880600000000000, // 8 moves
+        /* H5 idx 81 */ 0x00180400800001081100C00000000000, // 10 moves
+        /* H6 idx 82 */ 0x00300881080002102201800000000000, // 12 moves
+        /* H7 idx 83 */ 0x00601102100004204403000000000000, // 12 moves
+        /* H8 idx 84 */ 0x00C02204200008408806000000000000, // 12 moves
+        /* H9 idx 85 */ 0x0180040040001081100C000000000000, // 10 moves
+        /* H10 idx 86 */ 0x01000800800001022018000000000000, // 8 moves
+        /* H11 idx 87 */ 0x00001001000002004030000000000000, // 6 moves
+        /* I1 off */ 0,
+        /* I2 off */ 0,
+        /* I3 off */ 0,
+        /* I4 idx 91 */ 0x00100200000400400300000000000000, // 6 moves
+        /* I5 idx 92 */ 0x00200400000800880600000000000000, // 7 moves
+        /* I6 idx 93 */ 0x00400800001081100C00000000000000, // 8 moves
+        /* I7 idx 94 */ 0x00881080002102201800000000000000, // 10 moves
+        /* I8 idx 95 */ 0x01102100004204403000000000000000, // 10 moves
+        /* I9 idx 96 */ 0x00200200008408806000000000000000, // 8 moves
+        /* I10 idx 97 */ 0x0040040000081100C000000000000000, // 7 moves
+        /* I11 idx 98 */ 0x00800800001002018000000000000000, // 6 moves
+        /* J1 off */ 0,
+        /* J2 off */ 0,
+        /* J3 off */ 0,
+        /* J4 off */ 0,
+        /* J5 idx103 */ 0x00200000400400300000000000000000, // 5 moves
+        /* J6 idx104 */ 0x00400000800880600000000000000000, // 6 moves
+        /* J7 idx105 */ 0x00800001081100C00000000000000000, // 7 moves
+        /* J8 idx106 */ 0x01080002102201800000000000000000, // 8 moves
+        /* J9 idx107 */ 0x00100004204403000000000000000000, // 7 moves
+        /* J10 idx108 */ 0x00200000408806000000000000000000, // 6 moves
+        /* J11 idx109 */ 0x0040000080100C000000000000000000, // 5 moves
+        /* K1 off */ 0,
+        /* K2 off */ 0,
+        /* K3 off */ 0,
+        /* K4 off */ 0,
+        /* K5 off */ 0,
+        /* K6 idx115 */ 0x00000400400300000000000000000000, // 4 moves
+        /* K7 idx116 */ 0x00000800880600000000000000000000, // 5 moves
+        /* K8 idx117 */ 0x00001081100C00000000000000000000, // 6 moves
+        /* K9 idx118 */ 0x00002102201800000000000000000000, // 6 moves
+        /* K10 idx119 */ 0x00000204403000000000000000000000, // 5 moves
+        /* K11 idx120 */ 0x00000400806000000000000000000000, // 4 moves
+    ];
+    const KING_ATTACKS: [u128; 121] = [
+        /* A1 idx  0 */ 0x00000000000000000000000000803802, // 5 moves
+        /* A2 idx  1 */ 0x00000000000000000000000001007805, // 7 moves
+        /* A3 idx  2 */ 0x0000000000000000000000000200F00A, // 7 moves
+        /* A4 idx  3 */ 0x0000000000000000000000000401E014, // 7 moves
+        /* A5 idx  4 */ 0x0000000000000000000000000803C028, // 7 moves
+        /* A6 idx  5 */ 0x00000000000000000000000010038010, // 5 moves
+        /* A7 off */ 0,
+        /* A8 off */ 0,
+        /* A9 off */ 0,
+        /* A10 off */ 0,
+        /* A11 off */ 0,
+        /* B1 idx 11 */ 0x00000000000000000000000401C01003, // 7 moves
+        /* B2 idx 12 */ 0x00000000000000000000000803C02807, // 10 moves
+        /* B3 idx 13 */ 0x0000000000000000000000100780500F, // 11 moves
+        /* B4 idx 14 */ 0x0000000000000000000000200F00A01E, // 11 moves
+        /* B5 idx 15 */ 0x0000000000000000000000401E01403C, // 11 moves
+        /* B6 idx 16 */ 0x0000000000000000000000803C028038, // 10 moves
+        /* B7 idx 17 */ 0x00000000000000000000010038010030, // 7 moves
+        /* B8 off */ 0,
+        /* B9 off */ 0,
+        /* B10 off */ 0,
+        /* B11 off */ 0,
+        /* C1 idx 22 */ 0x00000000000000000000200E00801800, // 7 moves
+        /* C2 idx 23 */ 0x00000000000000000000401E01403801, // 11 moves
+        /* C3 idx 24 */ 0x00000000000000000000803C02807802, // 12 moves
+        /* C4 idx 25 */ 0x0000000000000000000100780500F004, // 12 moves
+        /* C5 idx 26 */ 0x0000000000000000000200F00A01E008, // 12 moves
+        /* C6 idx 27 */ 0x0000000000000000000401E01403C010, // 12 moves
+        /* C7 idx 28 */ 0x0000000000000000000803C028038020, // 11 moves
+        /* C8 idx 29 */ 0x00000000000000000010038010030000, // 7 moves
+        /* C9 off */ 0,
+        /* C10 off */ 0,
+        /* C11 off */ 0,
+        /* D1 idx 33 */ 0x00000000000000000100700400C00000, // 7 moves
+        /* D2 idx 34 */ 0x00000000000000000200F00A01C00800, // 11 moves
+        /* D3 idx 35 */ 0x00000000000000000401E01403C01000, // 12 moves
+        /* D4 idx 36 */ 0x00000000000000000803C02807802000, // 12 moves
+        /* D5 idx 37 */ 0x0000000000000000100780500F004000, // 12 moves
+        /* D6 idx 38 */ 0x0000000000000000200F00A01E008000, // 12 moves
+        /* D7 idx 39 */ 0x0000000000000000401E01403C010000, // 12 moves
+        /* D8 idx 40 */ 0x0000000000000000803C028038020000, // 11 moves
+        /* D9 idx 41 */ 0x00000000000000010038010030000000, // 7 moves
+        /* D10 off */ 0,
+        /* D11 off */ 0,
+        /* E1 idx 44 */ 0x00000000000000080380200600000000, // 7 moves
+        /* E2 idx 45 */ 0x00000000000000100780500E00400000, // 11 moves
+        /* E3 idx 46 */ 0x00000000000000200F00A01E00800000, // 12 moves
+        /* E4 idx 47 */ 0x00000000000000401E01403C01000000, // 12 moves
+        /* E5 idx 48 */ 0x00000000000000803C02807802000000, // 12 moves
+        /* E6 idx 49 */ 0x0000000000000100780500F004000000, // 12 moves
+        /* E7 idx 50 */ 0x0000000000000200F00A01E008000000, // 12 moves
+        /* E8 idx 51 */ 0x0000000000000401E01403C010000000, // 12 moves
+        /* E9 idx 52 */ 0x0000000000000803C028038020000000, // 11 moves
+        /* E10 idx 53 */ 0x00000000000010038010030000000000, // 7 moves
+        /* E11 off */ 0,
+        /* F1 idx 55 */ 0x00000000000000180100300000000000, // 5 moves
+        /* F2 idx 56 */ 0x00000000000080380280700200000000, // 10 moves
+        /* F3 idx 57 */ 0x00000000000100780500F00400000000, // 12 moves
+        /* F4 idx 58 */ 0x00000000000200F00A01E00800000000, // 12 moves
+        /* F5 idx 59 */ 0x00000000000401E01403C01000000000, // 12 moves
+        /* F6 idx 60 */ 0x00000000000803C02807802000000000, // 12 moves
+        /* F7 idx 61 */ 0x0000000000100780500F004000000000, // 12 moves
+        /* F8 idx 62 */ 0x0000000000200F00A01E008000000000, // 12 moves
+        /* F9 idx 63 */ 0x0000000000401E01403C010000000000, // 12 moves
+        /* F10 idx 64 */ 0x0000000000801C028038020000000000, // 10 moves
+        /* F11 idx 65 */ 0x00000000000018010030000000000000, // 5 moves
+        /* G1 off */ 0,
+        /* G2 idx 67 */ 0x00000000000180100380100000000000, // 7 moves
+        /* G3 idx 68 */ 0x00000000080380280780200000000000, // 11 moves
+        /* G4 idx 69 */ 0x00000000100780500F00400000000000, // 12 moves
+        /* G5 idx 70 */ 0x00000000200F00A01E00800000000000, // 12 moves
+        /* G6 idx 71 */ 0x00000000401E01403C01000000000000, // 12 moves
+        /* G7 idx 72 */ 0x00000000803C02807802000000000000, // 12 moves
+        /* G8 idx 73 */ 0x0000000100780500F004000000000000, // 12 moves
+        /* G9 idx 74 */ 0x0000000200F00A01E008000000000000, // 12 moves
+        /* G10 idx 75 */ 0x0000000400E01403C010000000000000, // 11 moves
+        /* G11 idx 76 */ 0x0000000000C008038020000000000000, // 7 moves
+        /* H1 off */ 0,
+        /* H2 off */ 0,
+        /* H3 idx 79 */ 0x00000000180100380100000000000000, // 7 moves
+        /* H4 idx 80 */ 0x00000080380280780200000000000000, // 11 moves
+        /* H5 idx 81 */ 0x00000100780500F00400000000000000, // 12 moves
+        /* H6 idx 82 */ 0x00000200F00A01E00800000000000000, // 12 moves
+        /* H7 idx 83 */ 0x00000401E01403C01000000000000000, // 12 moves
+        /* H8 idx 84 */ 0x00000803C02807802000000000000000, // 12 moves
+        /* H9 idx 85 */ 0x0000100780500F004000000000000000, // 12 moves
+        /* H10 idx 86 */ 0x0000200700A01E008000000000000000, // 11 moves
+        /* H11 idx 87 */ 0x0000000600401C010000000000000000, // 7 moves
+        /* I1 off */ 0,
+        /* I2 off */ 0,
+        /* I3 off */ 0,
+        /* I4 idx 91 */ 0x00000180100380100000000000000000, // 7 moves
+        /* I5 idx 92 */ 0x00080380280780200000000000000000, // 11 moves
+        /* I6 idx 93 */ 0x00100780500F00400000000000000000, // 12 moves
+        /* I7 idx 94 */ 0x00200F00A01E00800000000000000000, // 12 moves
+        /* I8 idx 95 */ 0x00401E01403C01000000000000000000, // 12 moves
+        /* I9 idx 96 */ 0x00803C02807802000000000000000000, // 12 moves
+        /* I10 idx 97 */ 0x0100380500F004000000000000000000, // 11 moves
+        /* I11 idx 98 */ 0x0000300200E008000000000000000000, // 7 moves
+        /* J1 off */ 0,
+        /* J2 off */ 0,
+        /* J3 off */ 0,
+        /* J4 off */ 0,
+        /* J5 idx103 */ 0x00180100380100000000000000000000, // 7 moves
+        /* J6 idx104 */ 0x00380280780200000000000000000000, // 10 moves
+        /* J7 idx105 */ 0x00780500F00400000000000000000000, // 11 moves
+        /* J8 idx106 */ 0x00F00A01E00800000000000000000000, // 11 moves
+        /* J9 idx107 */ 0x01E01403C01000000000000000000000, // 11 moves
+        /* J10 idx108 */ 0x01C02807802000000000000000000000, // 10 moves
+        /* J11 idx109 */ 0x01801007004000000000000000000000, // 7 moves
+        /* K1 off */ 0,
+        /* K2 off */ 0,
+        /* K3 off */ 0,
+        /* K4 off */ 0,
+        /* K5 off */ 0,
+        /* K6 idx115 */ 0x00100380100000000000000000000000, // 5 moves
+        /* K7 idx116 */ 0x00280780200000000000000000000000, // 7 moves
+        /* K8 idx117 */ 0x00500F00400000000000000000000000, // 7 moves
+        /* K9 idx118 */ 0x00A01E00800000000000000000000000, // 7 moves
+        /* K10 idx119 */ 0x01403C01000000000000000000000000, // 7 moves
+        /* K11 idx120 */ 0x00803802000000000000000000000000, // 5 moves
+    ];
     pub fn new() -> Self {
         Self {
             is_white: true,
@@ -86,120 +336,14 @@ impl Game {
         }
     }
 
-    fn get_sliding_moves(
-        &self,
-        start_idx: usize,
-        moves: &mut [Move],
-        write_idx: &mut usize,
-    ) -> Result<(), ()> {
-        let piece = self.board.get_piece(start_idx as u8);
-        for offset in match piece.piece_type() {
-            PieceType::Rook => Self::ROOK_OFFSETS,
-            PieceType::Bishop => Self::BISHOP_OFFSETS,
-            _ => Self::QUEEN_OFFSETS,
-        } {
-            let mut curr_idx = start_idx as i16;
-
-            loop {
-                curr_idx += offset;
-
-                if curr_idx < 0 || curr_idx >= board::BOARD_SIZE as i16 {
-                    break;
-                }
-
-                let target_piece = self.board.get_piece(curr_idx as u8);
-
-                if target_piece.is_off_board() {
-                    break;
-                }
-                if target_piece.is_empty() {
-                    moves[*write_idx] = Move::new(
-                        unsafe { Square::try_from(start_idx as u8).unwrap_unchecked() },
-                        unsafe { Square::try_from(curr_idx as u8).unwrap_unchecked() },
-                        PieceType::None,
-                        PieceType::None,
-                        false,
-                        false,
-                        false,
-                    );
-                    *write_idx += 1;
-                } else {
-                    if target_piece.is_white() != piece.is_white() {
-                        moves[*write_idx] = Move::new(
-                            unsafe { Square::try_from(start_idx as u8).unwrap_unchecked() },
-                            unsafe { Square::try_from(curr_idx as u8).unwrap_unchecked() },
-                            PieceType::None,
-                            target_piece.piece_type(),
-                            false,
-                            false,
-                            false,
-                        );
-                        *write_idx += 1;
-                    }
-                    break;
-                }
-            }
-        }
-
-        Ok(())
+    #[inline(always)]
+    fn get_king_moves(start_idx: u8) -> u128 {
+        Self::KING_ATTACKS[start_idx as usize]
     }
 
-    fn get_knight_moves(&self, start_idx: usize, moves: &mut [Move], write_idx: &mut usize) {
-        let piece = self.board.get_piece(start_idx as u8);
-        for idx_offset in [34, -34, 35, -35, 25, -25, 14, -14, 9, -9, 21, -21] {
-            let target_idx = start_idx as i16 + idx_offset;
-
-            if target_idx < 0 || target_idx >= board::BOARD_SIZE as i16 {
-                continue;
-            }
-
-            let target_piece = self.board.get_piece(target_idx as u8);
-
-            if target_piece.is_off_board() { break; }
-            if target_piece.is_empty() || target_piece.is_white() != piece.is_white() {
-                moves[*write_idx] = Move::new(
-                    unsafe { Square::try_from(start_idx as u8).unwrap_unchecked() },
-                    unsafe { Square::try_from(target_idx as u8).unwrap_unchecked() },
-                    PieceType::None,
-                    target_piece.piece_type(),
-                    false,
-                    false,
-                    false,
-                );
-                *write_idx += 1;
-            }
-        }
-    }
-
-    fn get_king_moves(&self, start_idx: usize, moves: &mut [Move], write_idx: &mut usize) {
-        let piece = self.board.get_piece(start_idx as u8);
-        for idx_offset in [
-            1, 11, 10, 12, 23, 13, -1i16, -11i16, -10i16, -12i16, -23i16, -13i16,
-        ] {
-            let target_idx = start_idx as i16 + idx_offset;
-
-            if target_idx < 0 || target_idx >= board::BOARD_SIZE as i16 {
-                continue;
-            }
-
-            let target_piece = self.board.get_piece(target_idx as u8);
-
-            if target_piece.is_off_board() {
-                continue;
-            }
-            if target_piece.is_empty() || target_piece.is_white() != piece.is_white() {
-                moves[*write_idx] = Move::new(
-                    unsafe { Square::try_from(start_idx as u8).unwrap_unchecked() },
-                    unsafe { Square::try_from(target_idx as u8).unwrap_unchecked() },
-                    PieceType::None,
-                    target_piece.piece_type(),
-                    false,
-                    false,
-                    false,
-                );
-                *write_idx += 1;
-            }
-        }
+    #[inline(always)]
+    fn get_knight_moves(start_idx: u8) -> u128 {
+        Self::KNIGHT_ATTACKS[start_idx as usize]
     }
 
     pub fn get_pseudo_legal_moves(&self) -> Vec<Move> {

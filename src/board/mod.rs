@@ -103,7 +103,9 @@ impl Square {
     }
 
     #[inline]
-    pub fn is_valid_idx(idx: u8) -> bool { Self::is_valid((idx / 11) as i8, (idx % 11) as i8) }
+    pub fn is_valid_idx(idx: u8) -> bool {
+        Self::is_valid((idx / 11) as i8, (idx % 11) as i8)
+    }
 }
 
 impl TryFrom<u8> for Square {
@@ -112,8 +114,11 @@ impl TryFrom<u8> for Square {
     fn try_from(value: u8) -> Result<Self, ()> {
         let l = value / 11;
         let n = value % 11;
-        if Self::is_valid(l as i8, n as i8) { Ok(Self { l, n }) }
-        else { Err(()) }
+        if Self::is_valid(l as i8, n as i8) {
+            Ok(Self { l, n })
+        } else {
+            Err(())
+        }
     }
 }
 
@@ -278,26 +283,33 @@ impl Board {
     }
 
     pub fn get_piece(&self, idx: u8) -> Piece {
-        let existence = [self.wk, self.bk, self.wp, self.bp, self.wr, self.br, self.wn, self.bn, self.wb, self.bb, self.wq, self.bq].into_iter()
-            .map(|bb| (bb & (1 << idx)) >> idx == 1);
-
-        let mut piece_type = 0;
-        let mut is_white = true;
-
-        if !Square::is_valid_idx(idx) { return Piece::OFF_BOARD; }
-
-        for val in existence {
-            if val {
-                return Piece::new(is_white, PieceType::from(piece_type));
-            }
-            
-            if !is_white {
-                piece_type += 1;
-            }
-
-            is_white = !is_white;
+        if !Square::is_valid_idx(idx) {
+            return Piece::OFF_BOARD;
         }
 
-        return Piece::EMPTY;
+        let mask = 1u128 << idx;
+
+        let pieces = [
+            (self.wk, Piece::new(true, PieceType::King)),
+            (self.bk, Piece::new(false, PieceType::King)),
+            (self.wp, Piece::new(true, PieceType::Pawn)),
+            (self.bp, Piece::new(false, PieceType::Pawn)),
+            (self.wq, Piece::new(true, PieceType::Queen)),
+            (self.bq, Piece::new(false, PieceType::Queen)),
+            (self.wr, Piece::new(true, PieceType::Rook)),
+            (self.br, Piece::new(false, PieceType::Rook)),
+            (self.wb, Piece::new(true, PieceType::Bishop)),
+            (self.bb, Piece::new(false, PieceType::Bishop)),
+            (self.wn, Piece::new(true, PieceType::Knight)),
+            (self.bn, Piece::new(false, PieceType::Knight)),
+        ];
+
+        for (bb, piece) in pieces {
+            if (bb & mask) != 0 {
+                return piece;
+            }
+        }
+
+        Piece::EMPTY
     }
 }
