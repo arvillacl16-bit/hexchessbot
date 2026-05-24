@@ -881,7 +881,7 @@ impl Game {
     pub fn get_pseudo_legal_moves(&self) -> Vec<Move> {
         let mut moves = Vec::with_capacity(64);
 
-        let (side_mask, opp_mask) = if self.is_white { (self.board.white_pieces(), self.board.black_pieces()) } else { (self.board.white_pieces(), self.board.black_pieces()) };
+        let (side_mask, opp_mask) = if self.is_white { (self.board.white_pieces(), self.board.black_pieces()) } else { (self.board.black_pieces(), self.board.white_pieces()) };
         let all_occ = side_mask | opp_mask;
         let empty_or_enemy = !side_mask;
 
@@ -890,7 +890,7 @@ impl Game {
             while bishops != 0 {
                 let from_idx = bishops.trailing_zeros() as u8;
 
-                let mut attack_bb = self.get_bishop_attacks(from_idx, all_occ);
+                let mut attack_bb = self.get_bishop_attacks(from_idx, all_occ) & empty_or_enemy;
                 while attack_bb != 0 {
                     let to_idx = attack_bb.trailing_zeros() as u8;
                     let target_piece = self.board.get_piece(to_idx);
@@ -904,6 +904,138 @@ impl Game {
                 }
 
                 bishops &= bishops - 1;
+            }
+
+            let mut rooks = self.board.white_rooks();
+            while rooks != 0 {
+                let from_idx = rooks.trailing_zeros() as u8;
+
+                let mut attack_bb = self.get_rook_attacks(from_idx, all_occ) & empty_or_enemy;
+                while attack_bb != 0 {
+                    let to_idx = attack_bb.trailing_zeros() as u8;
+                    let target_piece = self.board.get_piece(to_idx);
+
+                    moves.push(Move::new(unsafe { Square::try_from(from_idx).unwrap_unchecked() }, 
+                            unsafe { Square::try_from(to_idx).unwrap_unchecked() }, 
+                            PieceType::None,
+                            target_piece.piece_type(),
+                            false, false, false));
+                    attack_bb &= attack_bb - 1;
+                }
+
+                rooks &= rooks - 1;
+            }
+
+            let mut knights = self.board.white_knights();
+            while knights != 0 {
+                let from_idx = knights.trailing_zeros() as u8;
+
+                let mut attack_bb = self.get_knight_attacks(from_idx) & empty_or_enemy;
+                while attack_bb != 0 {
+                    let to_idx = attack_bb.trailing_zeros() as u8;
+                    let target_piece = self.board.get_piece(to_idx);
+
+                    moves.push(Move::new(unsafe { Square::try_from(from_idx).unwrap_unchecked() }, 
+                            unsafe { Square::try_from(to_idx).unwrap_unchecked() }, 
+                            PieceType::None,
+                            target_piece.piece_type(),
+                            false, false, false));
+                    attack_bb &= attack_bb - 1;
+                }
+
+                knights &= knights - 1;
+            }
+
+            let king = self.board.white_kings();
+            let from_idx = king.trailing_zeros() as u8;
+
+            let mut attack_bb = self.get_king_attacks(from_idx) & empty_or_enemy;
+            while attack_bb != 0 {
+                let to_idx = attack_bb.trailing_zeros() as u8;
+                let target_piece = self.board.get_piece(to_idx);
+
+                moves.push(Move::new(unsafe { Square::try_from(from_idx).unwrap_unchecked() }, 
+                        unsafe { Square::try_from(to_idx).unwrap_unchecked() }, 
+                        PieceType::None,
+                        target_piece.piece_type(),
+                        false, false, false));
+                attack_bb &= attack_bb - 1;
+            }
+        } else {
+            let mut bishops = self.board.black_bishops();
+            while bishops != 0 {
+                let from_idx = bishops.trailing_zeros() as u8;
+
+                let mut attack_bb = self.get_bishop_attacks(from_idx, all_occ) & empty_or_enemy;
+                while attack_bb != 0 {
+                    let to_idx = attack_bb.trailing_zeros() as u8;
+                    let target_piece = self.board.get_piece(to_idx);
+
+                    moves.push(Move::new(unsafe { Square::try_from(from_idx).unwrap_unchecked() }, 
+                            unsafe { Square::try_from(to_idx).unwrap_unchecked() }, 
+                            PieceType::None,
+                            target_piece.piece_type(),
+                            false, false, false));
+                    attack_bb &= attack_bb - 1;
+                }
+
+                bishops &= bishops - 1;
+            }
+
+            let mut rooks = self.board.black_rooks();
+            while rooks != 0 {
+                let from_idx = rooks.trailing_zeros() as u8;
+
+                let mut attack_bb = self.get_rook_attacks(from_idx, all_occ) & empty_or_enemy;
+                while attack_bb != 0 {
+                    let to_idx = attack_bb.trailing_zeros() as u8;
+                    let target_piece = self.board.get_piece(to_idx);
+
+                    moves.push(Move::new(unsafe { Square::try_from(from_idx).unwrap_unchecked() }, 
+                            unsafe { Square::try_from(to_idx).unwrap_unchecked() }, 
+                            PieceType::None,
+                            target_piece.piece_type(),
+                            false, false, false));
+                    attack_bb &= attack_bb - 1;
+                }
+
+                rooks &= rooks - 1;
+            }
+
+            let mut knights = self.board.black_knights();
+            while knights != 0 {
+                let from_idx = knights.trailing_zeros() as u8;
+
+                let mut attack_bb = self.get_knight_attacks(from_idx) & empty_or_enemy;
+                while attack_bb != 0 {
+                    let to_idx = attack_bb.trailing_zeros() as u8;
+                    let target_piece = self.board.get_piece(to_idx);
+
+                    moves.push(Move::new(unsafe { Square::try_from(from_idx).unwrap_unchecked() }, 
+                            unsafe { Square::try_from(to_idx).unwrap_unchecked() }, 
+                            PieceType::None,
+                            target_piece.piece_type(),
+                            false, false, false));
+                    attack_bb &= attack_bb - 1;
+                }
+
+                knights &= knights - 1;
+            }
+
+            let king = self.board.black_kings();
+            let from_idx = king.trailing_zeros() as u8;
+
+            let mut attack_bb = self.get_king_attacks(from_idx) & empty_or_enemy;
+            while attack_bb != 0 {
+                let to_idx = attack_bb.trailing_zeros() as u8;
+                let target_piece = self.board.get_piece(to_idx);
+
+                moves.push(Move::new(unsafe { Square::try_from(from_idx).unwrap_unchecked() }, 
+                        unsafe { Square::try_from(to_idx).unwrap_unchecked() }, 
+                        PieceType::None,
+                        target_piece.piece_type(),
+                        false, false, false));
+                attack_bb &= attack_bb - 1;
             }
         }
         moves
