@@ -878,7 +878,38 @@ impl Game {
         }
     }
 
-    pub fn get_pseudo_legal_moves(&self) -> Vec<Move> {
+    fn get_pawn_moves(&self, start_idx: u8) -> u128 {
+        let piece_at_idx = self.board.get_piece(start_idx);
+        if piece_at_idx.piece_type() != PieceType::Pawn { return 0; }
+
+        let all_pieces = self.board.black_pieces() | self.board.white_pieces();
+
+        const WHITE_STARTING_PAWNS: u128 = 0b0000100000000001000000000010000000000100000011111000000000000000000000000000000000000000000000000000000000000000000000000000000000;
+        let mut res = 0;
+        if piece_at_idx.is_white() {
+            let single_push = (1 << (start_idx + 12)) & !all_pieces;
+            res |= single_push;
+            res |= (1 << (start_idx + 11)) & (self.board.black_pieces() | self.en_passant_square.map(|sq| 1 << u8::from(sq)).unwrap_or(0));
+            res |= (1 << (start_idx + 1)) & (self.board.black_pieces() | self.en_passant_square.map(|sq| 1 << u8::from(sq)).unwrap_or(0));
+
+            if (1 << start_idx) & WHITE_STARTING_PAWNS != 0 && single_push != 0 {
+                res |= (1 << (start_idx + 24)) & !all_pieces;
+            }
+        } else {
+            let single_push = (1 << (start_idx - 12)) & !all_pieces;
+            res |= single_push;
+            res |= (1 << (start_idx - 11)) & (self.board.white_pieces() | self.en_passant_square.map(|sq| 1 << u8::from(sq)).unwrap_or(0));
+            res |= (1 << (start_idx - 1)) & (self.board.white_pieces() | self.en_passant_square.map(|sq| 1 << u8::from(sq)).unwrap_or(0));
+
+            if (1 << start_idx) & (WHITE_STARTING_PAWNS.reverse_bits() << 7) != 0 && single_push != 0 {
+                res |= (1 << (start_idx - 24)) & !all_pieces;
+            }
+        }
+
+        res
+    }
+
+    fn get_pseudo_legal_moves(&self) -> Vec<Move> {
         let mut moves = Vec::with_capacity(64);
 
         let (side_mask, opp_mask) = if self.is_white { (self.board.white_pieces(), self.board.black_pieces()) } else { (self.board.black_pieces(), self.board.white_pieces()) };
@@ -924,6 +955,26 @@ impl Game {
                 }
 
                 rooks &= rooks - 1;
+            }
+
+            let mut queens = self.board.white_queens();
+            while queens != 0 {
+                let from_idx = queens.trailing_zeros() as u8;
+
+                let mut attack_bb = (self.get_rook_attacks(from_idx, all_occ) | self.get_bishop_attacks(from_idx, all_occ)) & empty_or_enemy;
+                while attack_bb != 0 {
+                    let to_idx = attack_bb.trailing_zeros() as u8;
+                    let target_piece = self.board.get_piece(to_idx);
+
+                    moves.push(Move::new(unsafe { Square::try_from(from_idx).unwrap_unchecked() }, 
+                            unsafe { Square::try_from(to_idx).unwrap_unchecked() }, 
+                            PieceType::None,
+                            target_piece.piece_type(),
+                            false, false, false));
+                    attack_bb &= attack_bb - 1;
+                }
+
+                queens &= queens - 1;
             }
 
             let mut knights = self.board.white_knights();
@@ -1000,6 +1051,26 @@ impl Game {
                 }
 
                 rooks &= rooks - 1;
+            }
+
+            let mut queens = self.board.black_queens();
+            while queens != 0 {
+                let from_idx = queens.trailing_zeros() as u8;
+
+                let mut attack_bb = (self.get_rook_attacks(from_idx, all_occ) | self.get_bishop_attacks(from_idx, all_occ)) & empty_or_enemy;
+                while attack_bb != 0 {
+                    let to_idx = attack_bb.trailing_zeros() as u8;
+                    let target_piece = self.board.get_piece(to_idx);
+
+                    moves.push(Move::new(unsafe { Square::try_from(from_idx).unwrap_unchecked() }, 
+                            unsafe { Square::try_from(to_idx).unwrap_unchecked() }, 
+                            PieceType::None,
+                            target_piece.piece_type(),
+                            false, false, false));
+                    attack_bb &= attack_bb - 1;
+                }
+
+                queens &= queens - 1;
             }
 
             let mut knights = self.board.black_knights();
