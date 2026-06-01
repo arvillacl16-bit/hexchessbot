@@ -878,13 +878,11 @@ impl Game {
         }
     }
 
-    fn get_pawn_moves(&self, start_idx: u8) -> u128 {
+    /* fn get_pawn_moves(&self, start_idx: u8) -> u128 {
         let piece_at_idx = self.board.get_piece(start_idx);
         if piece_at_idx.piece_type() != PieceType::Pawn { return 0; }
 
-        let all_pieces = self.board.black_pieces() | self.board.white_pieces();
 
-        const WHITE_STARTING_PAWNS: u128 = 0b0000100000000001000000000010000000000100000011111000000000000000000000000000000000000000000000000000000000000000000000000000000000;
         let mut res = 0;
         if piece_at_idx.is_white() {
             let single_push = (1 << (start_idx + 12)) & !all_pieces;
@@ -907,11 +905,13 @@ impl Game {
         }
 
         res
-    }
+    } */
 
     fn get_pseudo_legal_moves(&self) -> Vec<Move> {
         let mut moves = Vec::with_capacity(64);
 
+        const WHITE_STARTING_PAWNS: u128 = 0b0000100000000001000000000010000000000100000011111000000000000000000000000000000000000000000000000000000000000000000000000000000000;
+        const BLACK_STARTING_PAWNS: u128 = WHITE_STARTING_PAWNS.reverse_bits() << 7;
         let (side_mask, opp_mask) = if self.is_white { (self.board.white_pieces(), self.board.black_pieces()) } else { (self.board.black_pieces(), self.board.white_pieces()) };
         let all_occ = side_mask | opp_mask;
         let empty_or_enemy = !side_mask;
@@ -1012,6 +1012,64 @@ impl Game {
                         false, false, false));
                 attack_bb &= attack_bb - 1;
             }
+
+            for i in 0..121 {
+                let piece = self.board.get_piece(i);
+                if piece.piece_type() != PieceType::Pawn || !piece.is_white() { continue; }
+                let sq = unsafe { Square::try_from(i).unwrap_unchecked() };
+
+                let single_push = (1 << (i + 12)) & !all_occ;
+                if single_push != 0 {
+                    if !matches!(i + 12, 116 | 117 | 118 | 119 | 120 | 109 | 98 | 87 | 76) {
+                        moves.push(Move::new(sq, unsafe { Square::try_from(i + 12).unwrap_unchecked() }, PieceType::None, PieceType::None, false, false, false));
+                    } else {
+                        let res_sq = unsafe { Square::try_from(i + 12).unwrap_unchecked() };
+                        moves.push(Move::new(sq, res_sq, PieceType::Queen, PieceType::None, false, false, true));
+                        moves.push(Move::new(sq, res_sq, PieceType::Knight, PieceType::None, false, false, true));
+                        moves.push(Move::new(sq, res_sq, PieceType::Rook, PieceType::None, false, false, true));
+                        moves.push(Move::new(sq, res_sq, PieceType::Knight, PieceType::None, false, false, true));
+                    }
+                }
+
+                if ((1 << i) & WHITE_STARTING_PAWNS) != 0 && single_push != 0 {
+                    moves.push(Move::new(sq, unsafe { Square::try_from(i + 24).unwrap_unchecked() }, PieceType::None, PieceType::None, true, false, false));
+                }
+
+                let en_passant_bb = self.en_passant_square.map(|sq| 1 << u8::from(sq)).unwrap_or(0);
+                if ((1 << (i + 1)) & en_passant_bb) != 0 {
+                    moves.push(Move::new(sq, unsafe { Square::try_from(i + 1).unwrap_unchecked() }, PieceType::None, PieceType::None, false, true, false));
+                }
+                
+                if ((1 << (i + 11)) & en_passant_bb) != 0 {
+                    moves.push(Move::new(sq, unsafe { Square::try_from(i + 11).unwrap_unchecked() }, PieceType::None, PieceType::None, false, true, false));
+                }
+
+                if ((1 << (i + 1)) & opp_mask) != 0 {
+                    let target_piece = self.board.get_piece(i + 1);
+                    if !matches!(i + 1, 116 | 117 | 118 | 119 | 120) {
+                        moves.push(Move::new(sq, unsafe { Square::try_from(i + 1).unwrap_unchecked() }, PieceType::None, target_piece.piece_type(), false, false, false));
+                    } else {
+                        let res_sq = unsafe { Square::try_from(i + 1).unwrap_unchecked() };
+                        moves.push(Move::new(sq, res_sq, PieceType::Queen, target_piece.piece_type(), false, false, false));
+                        moves.push(Move::new(sq, res_sq, PieceType::Knight, target_piece.piece_type(), false, false, false));
+                        moves.push(Move::new(sq, res_sq, PieceType::Rook, target_piece.piece_type(), false, false, false));
+                        moves.push(Move::new(sq, res_sq, PieceType::Bishop, target_piece.piece_type(), false, false, false));
+                    }
+                }
+
+                if ((1 << (i + 11)) & opp_mask) != 0 {
+                    let target_piece = self.board.get_piece(i + 11);
+                    if !matches!(i + 11, 120 | 109 | 98 | 87 | 76) {
+                        moves.push(Move::new(sq, unsafe { Square::try_from(i + 11).unwrap_unchecked() }, PieceType::None, target_piece.piece_type(), false, false, false));
+                    } else {
+                        let res_sq = unsafe { Square::try_from(i + 11).unwrap_unchecked() };
+                        moves.push(Move::new(sq, res_sq, PieceType::Queen, target_piece.piece_type(), false, false, false));
+                        moves.push(Move::new(sq, res_sq, PieceType::Knight, target_piece.piece_type(), false, false, false));
+                        moves.push(Move::new(sq, res_sq, PieceType::Rook, target_piece.piece_type(), false, false, false));
+                        moves.push(Move::new(sq, res_sq, PieceType::Bishop, target_piece.piece_type(), false, false, false));
+                    }
+                }
+            }
         } else {
             let mut bishops = self.board.black_bishops();
             while bishops != 0 {
@@ -1041,7 +1099,6 @@ impl Game {
                 while attack_bb != 0 {
                     let to_idx = attack_bb.trailing_zeros() as u8;
                     let target_piece = self.board.get_piece(to_idx);
-
                     moves.push(Move::new(unsafe { Square::try_from(from_idx).unwrap_unchecked() }, 
                             unsafe { Square::try_from(to_idx).unwrap_unchecked() }, 
                             PieceType::None,
@@ -1107,6 +1164,64 @@ impl Game {
                         target_piece.piece_type(),
                         false, false, false));
                 attack_bb &= attack_bb - 1;
+            }
+
+            for i in 0..121 {
+                let piece = self.board.get_piece(i);
+                if piece.piece_type() != PieceType::Pawn || piece.is_white() { continue; }
+                let sq = unsafe { Square::try_from(i).unwrap_unchecked() };
+
+                let single_push = (1 << (i - 12)) & !all_occ;
+                if single_push != 0 {
+                    if !matches!(i - 12, 4 | 3 | 2 | 1 | 0 | 11 | 22 | 33 | 44) {
+                        moves.push(Move::new(sq, unsafe { Square::try_from(i - 12).unwrap_unchecked() }, PieceType::None, PieceType::None, false, false, false));
+                    } else {
+                        let res_sq = unsafe { Square::try_from(i - 12).unwrap_unchecked() };
+                        moves.push(Move::new(sq, res_sq, PieceType::Queen, PieceType::None, false, false, true));
+                        moves.push(Move::new(sq, res_sq, PieceType::Knight, PieceType::None, false, false, true));
+                        moves.push(Move::new(sq, res_sq, PieceType::Rook, PieceType::None, false, false, true));
+                        moves.push(Move::new(sq, res_sq, PieceType::Knight, PieceType::None, false, false, true));
+                    }
+                }
+
+                if ((1 << i) & BLACK_STARTING_PAWNS) != 0 && single_push != 0 {
+                    moves.push(Move::new(sq, unsafe { Square::try_from(i - 24).unwrap_unchecked() }, PieceType::None, PieceType::None, true, false, false));
+                }
+
+                let en_passant_bb = self.en_passant_square.map(|sq| 1 << u8::from(sq)).unwrap_or(0);
+                if ((1 << (i - 1)) & en_passant_bb) != 0 {
+                    moves.push(Move::new(sq, unsafe { Square::try_from(i - 1).unwrap_unchecked() }, PieceType::None, PieceType::None, false, true, false));
+                }
+                
+                if ((1 << (i - 11)) & en_passant_bb) != 0 {
+                    moves.push(Move::new(sq, unsafe { Square::try_from(i - 11).unwrap_unchecked() }, PieceType::None, PieceType::None, false, true, false));
+                }
+
+                if ((1 << (i - 1)) & opp_mask) != 0 {
+                    let target_piece = self.board.get_piece(i - 1);
+                    if !matches!(i - 1, 4 | 3 | 2 | 1) {
+                        moves.push(Move::new(sq, unsafe { Square::try_from(i - 1).unwrap_unchecked() }, PieceType::None, target_piece.piece_type(), false, false, false));
+                    } else {
+                        let res_sq = unsafe { Square::try_from(i - 1).unwrap_unchecked() };
+                        moves.push(Move::new(sq, res_sq, PieceType::Queen, target_piece.piece_type(), false, false, false));
+                        moves.push(Move::new(sq, res_sq, PieceType::Knight, target_piece.piece_type(), false, false, false));
+                        moves.push(Move::new(sq, res_sq, PieceType::Rook, target_piece.piece_type(), false, false, false));
+                        moves.push(Move::new(sq, res_sq, PieceType::Bishop, target_piece.piece_type(), false, false, false));
+                    }
+                }
+
+                if ((1 << (i - 11)) & opp_mask) != 0 {
+                    let target_piece = self.board.get_piece(i - 11);
+                    if !matches!(i - 11, 11 | 22 | 33 | 44 | 55) {
+                        moves.push(Move::new(sq, unsafe { Square::try_from(i - 11).unwrap_unchecked() }, PieceType::None, target_piece.piece_type(), false, false, false));
+                    } else {
+                        let res_sq = unsafe { Square::try_from(i - 11).unwrap_unchecked() };
+                        moves.push(Move::new(sq, res_sq, PieceType::Queen, target_piece.piece_type(), false, false, false));
+                        moves.push(Move::new(sq, res_sq, PieceType::Knight, target_piece.piece_type(), false, false, false));
+                        moves.push(Move::new(sq, res_sq, PieceType::Rook, target_piece.piece_type(), false, false, false));
+                        moves.push(Move::new(sq, res_sq, PieceType::Bishop, target_piece.piece_type(), false, false, false));
+                    }
+                }
             }
         }
         moves

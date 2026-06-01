@@ -203,22 +203,22 @@ impl Board {
 
     pub fn set_piece(&mut self, square: Square, piece: Piece) {
         let idx = u8::from(square);
-        let select_mask: u128 = !(1 << idx);
+        let select_mask: u128 = 1 << idx;
         self.clear_square(idx);
 
         match (piece.piece_type(), piece.is_white()) {
-            (PieceType::Pawn, true) => self.wp |= !select_mask,
-            (PieceType::Pawn, false) => self.bp |= !select_mask,
-            (PieceType::Rook, true) => self.wr |= !select_mask,
-            (PieceType::Rook, false) => self.br |= !select_mask,
-            (PieceType::Knight, true) => self.wn |= !select_mask,
-            (PieceType::Knight, false) => self.bn |= !select_mask,
-            (PieceType::Bishop, true) => self.wb |= !select_mask,
-            (PieceType::Bishop, false) => self.bb |= !select_mask,
-            (PieceType::Queen, true) => self.wq |= !select_mask,
-            (PieceType::Queen, false) => self.bq |= !select_mask,
-            (PieceType::King, true) => self.wk |= !select_mask,
-            (PieceType::King, false) => self.bk |= !select_mask,
+            (PieceType::Pawn, true) => self.wp |= select_mask,
+            (PieceType::Pawn, false) => self.bp |= select_mask,
+            (PieceType::Rook, true) => self.wr |= select_mask,
+            (PieceType::Rook, false) => self.br |= select_mask,
+            (PieceType::Knight, true) => self.wn |= select_mask,
+            (PieceType::Knight, false) => self.bn |= select_mask,
+            (PieceType::Bishop, true) => self.wb |= select_mask,
+            (PieceType::Bishop, false) => self.bb |= select_mask,
+            (PieceType::Queen, true) => self.wq |= select_mask,
+            (PieceType::Queen, false) => self.bq |= select_mask,
+            (PieceType::King, true) => self.wk |= select_mask,
+            (PieceType::King, false) => self.bk |= select_mask,
             _ => {}
         }
     }
