@@ -90,18 +90,21 @@ pub struct Board {
     bk: u128,
     wq: u128,
     bq: u128,
+    white: u128,
+    black: u128,
 }
 
 impl Board {
     const ON_BOARD: u128 = 0b00000001111110000011111110000111111110001111111110011111111110111111111110111111111100111111111000111111110000111111100000111111;
     #[inline]
-    pub fn is_invalid_idx(idx: u8) -> bool {
-        matches!(idx, 6 | 7 | 8 | 9 | 10 | 18 | 19 | 20 | 21 | 30 | 31 | 32 | 42 | 43 | 54 | 66 | 77 | 78 | 88 | 89 | 90 | 99 | 100 | 101 | 102 | 110 | 111 | 112 | 113 | 114)
+    pub fn is_valid_idx(idx: u8) -> bool {
+        if idx > 120 { return false; }
+        (1u128 << idx) & Self::ON_BOARD != 0
     }
 
     #[inline]
-    pub fn is_valid_idx(idx: u8) -> bool {
-        !Self::is_invalid_idx(idx)
+    pub fn is_invalid_idx(idx: u8) -> bool {
+        !Self::is_valid_idx(idx)
     }
     
     #[inline]
@@ -119,6 +122,8 @@ impl Board {
             bk: 0,
             wq: 0,
             bq: 0,
+            white: 0,
+            black: 0,
         }
     }
 
@@ -137,37 +142,61 @@ impl Board {
             bq: 0b00000000000_01000000000_00000000000_00000000000_00000000000_00000000000_00000000000_00000000000_00000000000_00000000000_00000000000,
             wk: 0b00000000000_00000000000_00000000000_00000000000_00000000000_00000000000_00000000000_00000000000_00000000000_00000000000_00000000010,
             bk: 0b01000000000_00000000000_00000000000_00000000000_00000000000_00000000000_00000000000_00000000000_00000000000_00000000000_00000000000,
+            white: 0b00000000000_00000000000_00000000000_00000000000_00000000000_00000000000_00111110000_10010000000_10010000010_11010000001_00111000011,
+            black: 0b11000101000_11000010000_01000010100_00000010001_00001111100_00000000000_00000000000_00000000000_00000000000_00000000000_00000000000,
         }
     }
 
-    pub fn set_piece(&mut self, idx: u8, piece: Piece) {
-        let select_mask: u128 = 1 << idx;
+    fn sync_total_bb(&mut self) {
+        self.white = self.wp | self.wn | self.wb | self.wr | self.wq | self.wk;
+        self.black = self.bp | self.bn | self.bb | self.br | self.bq | self.bk;
+    }
 
-        match (piece.piece_type(), piece.is_white()) {
-            (PieceType::Pawn, true) => self.wp |= select_mask,
-            (PieceType::Pawn, false) => self.bp |= select_mask,
-            (PieceType::Rook, true) => self.wr |= select_mask,
-            (PieceType::Rook, false) => self.br |= select_mask,
-            (PieceType::Knight, true) => self.wn |= select_mask,
-            (PieceType::Knight, false) => self.bn |= select_mask,
-            (PieceType::Bishop, true) => self.wb |= select_mask,
-            (PieceType::Bishop, false) => self.bb |= select_mask,
-            (PieceType::Queen, true) => self.wq |= select_mask,
-            (PieceType::Queen, false) => self.bq |= select_mask,
-            (PieceType::King, true) => self.wk |= select_mask,
-            (PieceType::King, false) => self.bk |= select_mask,
+    pub fn set_piece(&mut self, idx: u8, piece: Piece) {
+        let select_mask = 1u128 << idx;
+        match self.get_piece(idx) {
+            Piece::WHITE_PAWN => self.wp &= !select_mask,
+            Piece::BLACK_PAWN => self.bp &= !select_mask,
+            Piece::WHITE_ROOK => self.wr &= !select_mask,
+            Piece::BLACK_ROOK => self.br &= !select_mask,
+            Piece::WHITE_KNIGHT => self.wn &= !select_mask,
+            Piece::BLACK_KNIGHT => self.bn &= !select_mask,
+            Piece::WHITE_BISHOP => self.wb &= !select_mask,
+            Piece::BLACK_BISHOP => self.bb &= !select_mask,
+            Piece::WHITE_QUEEN => self.wq &= !select_mask,
+            Piece::BLACK_QUEEN => self.bq &= !select_mask,
+            Piece::WHITE_KING => self.wk &= !select_mask,
+            Piece::BLACK_KING => self.bk &= !select_mask,
             _ => {}
         }
+
+        match piece {
+            Piece::WHITE_PAWN => self.wp |= select_mask,
+            Piece::BLACK_PAWN => self.bp |= select_mask,
+            Piece::WHITE_ROOK => self.wr |= select_mask,
+            Piece::BLACK_ROOK => self.br |= select_mask,
+            Piece::WHITE_KNIGHT => self.wn |= select_mask,
+            Piece::BLACK_KNIGHT => self.bn |= select_mask,
+            Piece::WHITE_BISHOP => self.wb |= select_mask,
+            Piece::BLACK_BISHOP => self.bb |= select_mask,
+            Piece::WHITE_QUEEN => self.wq |= select_mask,
+            Piece::BLACK_QUEEN => self.bq |= select_mask,
+            Piece::WHITE_KING => self.wk |= select_mask,
+            Piece::BLACK_KING => self.bk |= select_mask,
+            _ => {}
+        }
+
+        self.sync_total_bb();
     }
 
     #[inline]
     pub fn white_pieces(&self) -> u128 {
-        self.wk | self.wp | self.wr | self.wn | self.wb | self.wq
+        self.white
     }
 
     #[inline]
     pub fn black_pieces(&self) -> u128 {
-        self.bk | self.bp | self.br | self.bn | self.bb | self.bq
+        self.black
     }
 
     #[inline]
