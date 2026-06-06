@@ -42,11 +42,18 @@ impl Piece {
     pub const OFF_BOARD: Piece = Piece(128);
     pub const EMPTY: Piece = Piece(0);
 
-    #[inline]
-    pub fn new(is_white: bool, piece_type: PieceType) -> Self {
-        let color_bit = if is_white { 1u8 << 3 } else { 0u8 };
-        Self(color_bit | u8::from(piece_type))
-    }
+    pub const WHITE_PAWN: Piece = Piece(0b1010);
+    pub const BLACK_PAWN: Piece = Piece(0b0010);
+    pub const WHITE_KING: Piece = Piece(0b1001);
+    pub const BLACK_KING: Piece = Piece(0b0001);
+    pub const WHITE_KNIGHT: Piece = Piece(0b1110);
+    pub const BLACK_KNIGHT: Piece = Piece(0b0110);
+    pub const WHITE_BISHOP: Piece = Piece(0b1101);
+    pub const BLACK_BISHOP: Piece = Piece(0b0101);
+    pub const WHITE_ROOK: Piece = Piece(0b1100);
+    pub const BLACK_ROOK: Piece = Piece(0b0100);
+    pub const WHITE_QUEEN: Piece = Piece(0b1011);
+    pub const BLACK_QUEEN: Piece = Piece(0b0011);
 
     #[inline]
     pub fn is_white(self) -> bool {
@@ -69,66 +76,6 @@ impl Piece {
     }
 }
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub struct Square {
-    l: u8,
-    n: u8,
-}
-
-impl Square {
-    #[inline]
-    pub fn new(l: i8, n: i8) -> Option<Self> {
-        if Self::is_valid(l, n) {
-            Some(Square {
-                l: l as u8,
-                n: n as u8,
-            })
-        } else {
-            None
-        }
-    }
-
-    #[inline]
-    pub unsafe fn new_unchecked(l: i8, n: i8) -> Self {
-        Square {
-            l: l as u8,
-            n: n as u8,
-        }
-    }
-
-    #[inline]
-    pub fn is_valid(l: i8, n: i8) -> bool {
-        let diff = l - n;
-        (0..11).contains(&l) && (0..11).contains(&n) && diff >= -5 && diff <= 5
-    }
-
-    #[inline]
-    pub fn is_valid_idx(idx: u8) -> bool {
-        Self::is_valid((idx / 11) as i8, (idx % 11) as i8)
-    }
-}
-
-impl TryFrom<u8> for Square {
-    type Error = ();
-    #[inline]
-    fn try_from(value: u8) -> Result<Self, ()> {
-        let l = value / 11;
-        let n = value % 11;
-        if Self::is_valid(l as i8, n as i8) {
-            Ok(Self { l, n })
-        } else {
-            Err(())
-        }
-    }
-}
-
-impl From<Square> for u8 {
-    #[inline]
-    fn from(value: Square) -> Self {
-        value.l * 11 + value.n
-    }
-}
-
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct Board {
     wp: u128,
@@ -147,7 +94,16 @@ pub struct Board {
 
 impl Board {
     const ON_BOARD: u128 = 0b00000001111110000011111110000111111110001111111110011111111110111111111110111111111100111111111000111111110000111111100000111111;
+    #[inline]
+    pub fn is_invalid_idx(idx: u8) -> bool {
+        matches!(idx, 6 | 7 | 8 | 9 | 10 | 18 | 19 | 20 | 21 | 30 | 31 | 32 | 42 | 43 | 54 | 66 | 77 | 78 | 88 | 89 | 90 | 99 | 100 | 101 | 102 | 110 | 111 | 112 | 113 | 114)
+    }
 
+    #[inline]
+    pub fn is_valid_idx(idx: u8) -> bool {
+        !Self::is_invalid_idx(idx)
+    }
+    
     #[inline]
     pub fn new() -> Self {
         Board {
@@ -184,27 +140,8 @@ impl Board {
         }
     }
 
-    #[inline]
-    pub fn clear_square(&mut self, idx: u8) {
-        let mask = !(1u128 << idx);
-        self.wp &= mask;
-        self.bp &= mask;
-        self.wr &= mask;
-        self.br &= mask;
-        self.wn &= mask;
-        self.bn &= mask;
-        self.wb &= mask;
-        self.bb &= mask;
-        self.wq &= mask;
-        self.bq &= mask;
-        self.wk &= mask;
-        self.bk &= mask;
-    }
-
-    pub fn set_piece(&mut self, square: Square, piece: Piece) {
-        let idx = u8::from(square);
+    pub fn set_piece(&mut self, idx: u8, piece: Piece) {
         let select_mask: u128 = 1 << idx;
-        self.clear_square(idx);
 
         match (piece.piece_type(), piece.is_white()) {
             (PieceType::Pawn, true) => self.wp |= select_mask,
@@ -283,31 +220,32 @@ impl Board {
     }
 
     pub fn get_piece(&self, idx: u8) -> Piece {
-        if !Square::is_valid_idx(idx) {
+        if !Self::is_valid_idx(idx) {
             return Piece::OFF_BOARD;
         }
 
         let mask = 1u128 << idx;
+        let white = self.white_pieces();
+        let black = self.black_pieces();
 
-        let pieces = [
-            (self.wk, Piece::new(true, PieceType::King)),
-            (self.bk, Piece::new(false, PieceType::King)),
-            (self.wp, Piece::new(true, PieceType::Pawn)),
-            (self.bp, Piece::new(false, PieceType::Pawn)),
-            (self.wq, Piece::new(true, PieceType::Queen)),
-            (self.bq, Piece::new(false, PieceType::Queen)),
-            (self.wr, Piece::new(true, PieceType::Rook)),
-            (self.br, Piece::new(false, PieceType::Rook)),
-            (self.wb, Piece::new(true, PieceType::Bishop)),
-            (self.bb, Piece::new(false, PieceType::Bishop)),
-            (self.wn, Piece::new(true, PieceType::Knight)),
-            (self.bn, Piece::new(false, PieceType::Knight)),
-        ];
+        if ((white | black) & mask) == 0 {
+            return Piece::EMPTY;
+        }
 
-        for (bb, piece) in pieces {
-            if (bb & mask) != 0 {
-                return piece;
-            }
+        if (white & mask) != 0 {
+            if (self.wp & mask) != 0 { return Piece::WHITE_PAWN; }
+            if (self.wn & mask) != 0 { return Piece::WHITE_KNIGHT; }
+            if (self.wb & mask) != 0 { return Piece::WHITE_BISHOP; }
+            if (self.wr & mask) != 0 { return Piece::WHITE_ROOK; }
+            if (self.wq & mask) != 0 { return Piece::WHITE_QUEEN; }
+            if (self.wk & mask) != 0 { return Piece::WHITE_KING; }
+        } else {
+            if (self.bp & mask) != 0 { return Piece::BLACK_PAWN; }
+            if (self.bn & mask) != 0 { return Piece::BLACK_KNIGHT; }
+            if (self.bb & mask) != 0 { return Piece::BLACK_BISHOP; }
+            if (self.br & mask) != 0 { return Piece::BLACK_ROOK; }
+            if (self.bq & mask) != 0 { return Piece::BLACK_QUEEN; }
+            if (self.bk & mask) != 0 { return Piece::BLACK_KING; }
         }
 
         Piece::EMPTY
