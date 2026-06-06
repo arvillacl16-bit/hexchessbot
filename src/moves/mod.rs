@@ -902,7 +902,243 @@ impl Game {
         res
     } */
 
-    fn get_pseudo_legal_moves(&self) -> Vec<Move> {
+    fn get_opp_covered_squares(&self) -> u128 {
+        let mut res = 0;
+        let (side_mask, opp_mask) = if !self.is_white { (self.board.white_pieces(), self.board.black_pieces()) } else { (self.board.black_pieces(), self.board.white_pieces()) };
+        let all_occ = side_mask | opp_mask;
+        let empty_or_enemy = !side_mask;
+
+        if self.is_white {
+            let mut bishops = self.board.white_bishops();
+            while bishops != 0 {
+                let from_idx = bishops.trailing_zeros() as u8;
+
+                let mut attack_bb = self.get_bishop_attacks(from_idx, all_occ) & empty_or_enemy;
+                while attack_bb != 0 {
+                    let to_idx = attack_bb.trailing_zeros() as u8;
+                    let target_piece = self.board.get_piece(to_idx);
+
+                    if !target_piece.is_empty() {
+                        res |= 1u128 << to_idx;
+                    }
+                    attack_bb &= attack_bb - 1;
+                }
+
+                bishops &= bishops - 1;
+            }
+
+            let mut rooks = self.board.white_rooks();
+            while rooks != 0 {
+                let from_idx = rooks.trailing_zeros() as u8;
+
+                let mut attack_bb = self.get_rook_attacks(from_idx, all_occ) & empty_or_enemy;
+                while attack_bb != 0 {
+                    let to_idx = attack_bb.trailing_zeros() as u8;
+                    let target_piece = self.board.get_piece(to_idx);
+
+                    if !target_piece.is_empty() {
+                        res |= 1u128 << to_idx;
+                    }
+
+                    attack_bb &= attack_bb - 1;
+                }
+
+                rooks &= rooks - 1;
+            }
+
+            let mut queens = self.board.white_queens();
+            while queens != 0 {
+                let from_idx = queens.trailing_zeros() as u8;
+
+                let mut attack_bb = (self.get_rook_attacks(from_idx, all_occ) | self.get_bishop_attacks(from_idx, all_occ)) & empty_or_enemy;
+                while attack_bb != 0 {
+                    let to_idx = attack_bb.trailing_zeros() as u8;
+                    let target_piece = self.board.get_piece(to_idx);
+
+                    if !target_piece.is_empty() {
+                        res |= 1u128 << to_idx;
+                    }
+
+                    attack_bb &= attack_bb - 1;
+                }
+
+                queens &= queens - 1;
+            }
+
+            let mut knights = self.board.white_knights();
+            while knights != 0 {
+                let from_idx = knights.trailing_zeros() as u8;
+
+                let mut attack_bb = self.get_knight_attacks(from_idx) & empty_or_enemy;
+                while attack_bb != 0 {
+                    let to_idx = attack_bb.trailing_zeros() as u8;
+                    let target_piece = self.board.get_piece(to_idx);
+
+                    if !target_piece.is_empty() {
+                        res |= 1u128 << to_idx;
+                    }
+ 
+                    attack_bb &= attack_bb - 1;
+                }
+
+                knights &= knights - 1;
+            }
+
+            let king = self.board.white_kings();
+            let from_idx = king.trailing_zeros() as u8;
+
+            let mut attack_bb = self.get_king_attacks(from_idx) & empty_or_enemy;
+            while attack_bb != 0 {
+                let to_idx = attack_bb.trailing_zeros() as u8;
+                let target_piece = self.board.get_piece(to_idx);
+
+                if !target_piece.is_empty() {
+                    res |= 1u128 << to_idx;
+                }
+
+                attack_bb &= attack_bb - 1;
+            }
+
+            for i in 0..121 {
+                let piece = self.board.get_piece(i);
+                if piece.piece_type() != PieceType::Pawn || !piece.is_white() { continue; }
+
+                let en_passant_bb = self.en_passant_square.map(|sq| 1 << u8::from(sq)).unwrap_or(0);
+                if ((1 << (i + 1)) & en_passant_bb) != 0 {
+                    res |= 1u128 << (i + 1);
+                }
+                
+                if ((1 << (i + 11)) & en_passant_bb) != 0 {
+                    res |= 1u128 << (i + 11);
+                }
+
+                if 1 << (i + 1) != 0 {
+                    res |= 1u128 << (i + 1);
+                }
+                
+                if 1 << (i - 11) != 0 {
+                    res |= 1u128 << (i + 11);
+                }
+            }
+        } else {
+            let mut bishops = self.board.black_bishops();
+            while bishops != 0 {
+                let from_idx = bishops.trailing_zeros() as u8;
+
+                let mut attack_bb = self.get_bishop_attacks(from_idx, all_occ) & empty_or_enemy;
+                while attack_bb != 0 {
+                    let to_idx = attack_bb.trailing_zeros() as u8;
+                    let target_piece = self.board.get_piece(to_idx);
+
+                    if !target_piece.is_empty() {
+                        res |= 1u128 << to_idx;
+                    }
+
+                    attack_bb &= attack_bb - 1;
+                }
+
+                bishops &= bishops - 1;
+            }
+
+            let mut rooks = self.board.black_rooks();
+            while rooks != 0 {
+                let from_idx = rooks.trailing_zeros() as u8;
+
+                let mut attack_bb = self.get_rook_attacks(from_idx, all_occ) & empty_or_enemy;
+                while attack_bb != 0 {
+                    let to_idx = attack_bb.trailing_zeros() as u8;
+                    let target_piece = self.board.get_piece(to_idx);
+
+                    if !target_piece.is_empty() {
+                        res |= 1u128 << to_idx;
+                    }
+
+                    attack_bb &= attack_bb - 1;
+                }
+
+                rooks &= rooks - 1;
+            }
+
+            let mut queens = self.board.black_queens();
+            while queens != 0 {
+                let from_idx = queens.trailing_zeros() as u8;
+
+                let mut attack_bb = (self.get_rook_attacks(from_idx, all_occ) | self.get_bishop_attacks(from_idx, all_occ)) & empty_or_enemy;
+                while attack_bb != 0 {
+                    let to_idx = attack_bb.trailing_zeros() as u8;
+                    let target_piece = self.board.get_piece(to_idx);
+
+                    if !target_piece.is_empty() {
+                        res |= 1u128 << to_idx;
+                    }
+
+                    attack_bb &= attack_bb - 1;
+                }
+
+                queens &= queens - 1;
+            }
+
+            let mut knights = self.board.black_knights();
+            while knights != 0 {
+                let from_idx = knights.trailing_zeros() as u8;
+
+                let mut attack_bb = self.get_knight_attacks(from_idx) & empty_or_enemy;
+                while attack_bb != 0 {
+                    let to_idx = attack_bb.trailing_zeros() as u8;
+                    let target_piece = self.board.get_piece(to_idx);
+
+                    if !target_piece.is_empty() {
+                        res |= 1u128 << to_idx;
+                    }
+
+                    attack_bb &= attack_bb - 1;
+                }
+
+                knights &= knights - 1;
+            }
+
+            let king = self.board.black_kings();
+            let from_idx = king.trailing_zeros() as u8;
+
+            let mut attack_bb = self.get_king_attacks(from_idx) & empty_or_enemy;
+            while attack_bb != 0 {
+                let to_idx = attack_bb.trailing_zeros() as u8;
+                let target_piece = self.board.get_piece(to_idx);
+
+                if !target_piece.is_empty() {
+                    res |= 1u128 << to_idx;
+                }
+
+                attack_bb &= attack_bb - 1;
+            }
+
+            for i in 0..121 {
+                let piece = self.board.get_piece(i);
+                if piece.piece_type() != PieceType::Pawn || piece.is_white() { continue; }
+                let sq = i;
+
+                let en_passant_bb = self.en_passant_square.map(|sq| 1 << u8::from(sq)).unwrap_or(0);
+                if ((1 << (i - 1)) & en_passant_bb) != 0 {
+                    res |= 1u128 << (i - 1);
+                }
+                
+                if ((1 << (i - 11)) & en_passant_bb) != 0 {
+                    res |= 1u128 << (i - 11);
+                }
+
+                if 1 << (i - 1) != 0 {
+                    res |= 1u128 << (i - 1);
+                }
+                
+                if 1 << (i - 11) != 0 {
+                    res |= 1u128 << (i - 11);
+                }
+            }
+        }
+        res
+    }
+
+    pub fn get_legal_moves(&self) -> Vec<Move> {
         let mut moves = Vec::with_capacity(64);
 
         const WHITE_STARTING_PAWNS: u128 = 0b0000100000000001000000000010000000000100000011111000000000000000000000000000000000000000000000000000000000000000000000000000000000;
@@ -999,7 +1235,7 @@ impl Game {
             let king = self.board.white_kings();
             let from_idx = king.trailing_zeros() as u8;
 
-            let mut attack_bb = self.get_king_attacks(from_idx) & empty_or_enemy;
+            let mut attack_bb = self.get_king_attacks(from_idx) & empty_or_enemy & self.get_opp_covered_squares();
             while attack_bb != 0 {
                 let to_idx = attack_bb.trailing_zeros() as u8;
                 let target_piece = self.board.get_piece(to_idx);
@@ -1155,7 +1391,7 @@ impl Game {
             let king = self.board.black_kings();
             let from_idx = king.trailing_zeros() as u8;
 
-            let mut attack_bb = self.get_king_attacks(from_idx) & empty_or_enemy;
+            let mut attack_bb = self.get_king_attacks(from_idx) & empty_or_enemy & self.get_opp_covered_squares();
             while attack_bb != 0 {
                 let to_idx = attack_bb.trailing_zeros() as u8;
                 let target_piece = self.board.get_piece(to_idx);
