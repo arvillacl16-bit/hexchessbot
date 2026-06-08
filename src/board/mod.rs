@@ -78,18 +78,18 @@ impl Piece {
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct Board {
-    wp: u128,
-    bp: u128,
-    wr: u128,
-    br: u128,
-    wn: u128,
-    bn: u128,
-    wb: u128,
-    bb: u128,
-    wk: u128,
-    bk: u128,
-    wq: u128,
-    bq: u128,
+    pub(crate) wp: u128,
+    pub(crate) bp: u128,
+    pub(crate) wr: u128,
+    pub(crate) br: u128,
+    pub(crate) wn: u128,
+    pub(crate) bn: u128,
+    pub(crate) wb: u128,
+    pub(crate) bb: u128,
+    pub(crate) wk: u128,
+    pub(crate) bk: u128,
+    pub(crate) wq: u128,
+    pub(crate) bq: u128,
     white: u128,
     black: u128,
 }
@@ -254,30 +254,28 @@ impl Board {
         }
 
         let mask = 1u128 << idx;
-        let white = self.white_pieces();
-        let black = self.black_pieces();
-
-        if ((white | black) & mask) == 0 {
+        let occupancy = self.white | self.black;
+        if (occupancy & mask) != 0 {
             return Piece::EMPTY;
         }
 
-        if (white & mask) != 0 {
-            if (self.wp & mask) != 0 { return Piece::WHITE_PAWN; }
-            if (self.wn & mask) != 0 { return Piece::WHITE_KNIGHT; }
-            if (self.wb & mask) != 0 { return Piece::WHITE_BISHOP; }
-            if (self.wr & mask) != 0 { return Piece::WHITE_ROOK; }
-            if (self.wq & mask) != 0 { return Piece::WHITE_QUEEN; }
-            if (self.wk & mask) != 0 { return Piece::WHITE_KING; }
-        } else {
-            if (self.bp & mask) != 0 { return Piece::BLACK_PAWN; }
-            if (self.bn & mask) != 0 { return Piece::BLACK_KNIGHT; }
-            if (self.bb & mask) != 0 { return Piece::BLACK_BISHOP; }
-            if (self.br & mask) != 0 { return Piece::BLACK_ROOK; }
-            if (self.bq & mask) != 0 { return Piece::BLACK_QUEEN; }
-            if (self.bk & mask) != 0 { return Piece::BLACK_KING; }
-        }
+        let is_white = ((self.white & mask) != 0) as u8;
 
-        Piece::EMPTY
+        let is_king = ((self.wk | self.bk) & mask != 0) as u8;
+        let is_pawn = ((self.wp | self.bp) & mask != 0) as u8;
+        let is_queen = ((self.wq | self.bq) & mask != 0) as u8;
+        let is_rook = ((self.wr | self.br) & mask != 0) as u8;
+        let is_bishop = ((self.wb | self.bb) & mask != 0) as u8;
+        let is_knight = ((self.wn | self.bn) & mask != 0) as u8;
+
+        let piece_type = (is_king * 1)
+            | (is_pawn * 2)
+            | (is_queen * 3)
+            | (is_rook * 4)
+            | (is_bishop * 5)
+            | (is_knight * 6);
+
+        Piece((is_white << 3 | piece_type))
     }
 }
 
