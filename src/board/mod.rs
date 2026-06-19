@@ -102,7 +102,9 @@ impl Board {
     const ON_BOARD: u128 = 0b00000001111110000011111110000111111110001111111110011111111110111111111110111111111100111111111000111111110000111111100000111111;
     #[inline]
     pub fn is_valid_idx(idx: u8) -> bool {
-        if idx > 120 { return false; }
+        if idx > 120 {
+            return false;
+        }
         (1u128 << idx) & Self::ON_BOARD != 0
     }
 
@@ -110,7 +112,7 @@ impl Board {
     pub fn is_invalid_idx(idx: u8) -> bool {
         !Self::is_valid_idx(idx)
     }
-    
+
     #[inline]
     pub fn new() -> Self {
         Board {
