@@ -3800,7 +3800,7 @@ impl Game {
         let empty_or_enemy = !side_mask;
 
         if self.is_white {
-            let mut bishops = self.board.white_bishops();
+            let mut bishops = self.board.bb;
             while bishops != 0 {
                 let from_idx = bishops.trailing_zeros() as u8;
 
@@ -3818,7 +3818,7 @@ impl Game {
                 bishops &= bishops - 1;
             }
 
-            let mut rooks = self.board.white_rooks();
+            let mut rooks = self.board.br;
             while rooks != 0 {
                 let from_idx = rooks.trailing_zeros() as u8;
 
@@ -3837,7 +3837,7 @@ impl Game {
                 rooks &= rooks - 1;
             }
 
-            let mut queens = self.board.white_queens();
+            let mut queens = self.board.bq;
             while queens != 0 {
                 let from_idx = queens.trailing_zeros() as u8;
 
@@ -3858,7 +3858,7 @@ impl Game {
                 queens &= queens - 1;
             }
 
-            let mut knights = self.board.white_knights();
+            let mut knights = self.board.bn;
             while knights != 0 {
                 let from_idx = knights.trailing_zeros() as u8;
 
@@ -3877,7 +3877,7 @@ impl Game {
                 knights &= knights - 1;
             }
 
-            let king = self.board.white_kings();
+            let king = self.board.bk;
             let from_idx = king.trailing_zeros() as u8;
 
             let mut attack_bb = self.get_king_attacks(from_idx) & empty_or_enemy;
@@ -3919,7 +3919,7 @@ impl Game {
                 }
             }
         } else {
-            let mut bishops = self.board.black_bishops();
+            let mut bishops = self.board.wb;
             while bishops != 0 {
                 let from_idx = bishops.trailing_zeros() as u8;
 
@@ -3938,7 +3938,7 @@ impl Game {
                 bishops &= bishops - 1;
             }
 
-            let mut rooks = self.board.black_rooks();
+            let mut rooks = self.board.wr;
             while rooks != 0 {
                 let from_idx = rooks.trailing_zeros() as u8;
 
@@ -3957,7 +3957,7 @@ impl Game {
                 rooks &= rooks - 1;
             }
 
-            let mut queens = self.board.black_queens();
+            let mut queens = self.board.wq;
             while queens != 0 {
                 let from_idx = queens.trailing_zeros() as u8;
 
@@ -3978,7 +3978,7 @@ impl Game {
                 queens &= queens - 1;
             }
 
-            let mut knights = self.board.black_knights();
+            let mut knights = self.board.wn;
             while knights != 0 {
                 let from_idx = knights.trailing_zeros() as u8;
 
@@ -3997,7 +3997,7 @@ impl Game {
                 knights &= knights - 1;
             }
 
-            let king = self.board.black_kings();
+            let king = self.board.wk;
             let from_idx = king.trailing_zeros() as u8;
 
             let mut attack_bb = self.get_king_attacks(from_idx) & empty_or_enemy;
@@ -4083,6 +4083,8 @@ impl Game {
                 let mut bishops = self.board.white_bishops();
                 while bishops != 0 {
                     let from_idx = bishops.trailing_zeros() as u8;
+
+                    //
 
                     let mut attack_bb = self.get_bishop_attacks(from_idx, all_occ) & empty_or_enemy;
                     while attack_bb != 0 {
